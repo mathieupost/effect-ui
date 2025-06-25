@@ -1,5 +1,14 @@
+/** @jsx h */
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+  }
+}
 
 type VNode = {
   tag: string;
@@ -40,23 +49,19 @@ function render(vnode: VNode | string): Node {
 const counterRef = Ref.unsafeMake(0);
 
 function Counter() {
-  // Read state
   const count = Effect.runSync(Ref.get(counterRef));
-  return h(
-    "div",
-    {},
-    h("h1", {}, `Counter: ${count}`),
-    h(
-      "button",
-      {
-        onclick: () => {
-          // Update state and re-render
+  return (
+    <div>
+      <h1>Counter: {count}</h1>
+      <button
+        onClick={() => {
           Effect.runSync(Ref.update(counterRef, (n) => n + 1));
           rerender();
-        },
-      },
-      "+1"
-    )
+        }}
+      >
+        +1
+      </button>
+    </div>
   );
 }
 
