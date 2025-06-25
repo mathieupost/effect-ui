@@ -1,8 +1,6 @@
 /** @jsx h */
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
-import * as Stream from "effect/Stream";
-import * as SubscriptionRef from "effect/SubscriptionRef";
 
 declare global {
   namespace JSX {
@@ -28,14 +26,18 @@ const h = (
   children,
 });
 
-// Render VNode to real DOM
-function render(vnode: VNode | string): Node {
+function render(vnode: VNode | string, mountNode: HTMLElement) {
+  currentHookIndex = 0;
+  mountNode.innerHTML = "";
+  mountNode.appendChild(renderNode(vnode));
+}
+
+function renderNode(vnode: VNode | string): Node {
   if (typeof vnode !== "object") {
     return document.createTextNode(vnode);
   }
-  // Support function components
   if (typeof vnode.tag === "function") {
-    return render(vnode.tag(vnode.props, ...vnode.children));
+    return renderNode(vnode.tag(vnode.props, ...vnode.children));
   }
   const el = document.createElement(vnode.tag);
   for (const [k, v] of Object.entries(vnode.props || {})) {
@@ -46,49 +48,53 @@ function render(vnode: VNode | string): Node {
     }
   }
   for (const child of vnode.children) {
-    el.appendChild(render(child));
+    el.appendChild(renderNode(child));
   }
   return el;
 }
 
-// --- useReactiveState hook ---
-function useReactiveState<T>(
-  initial: T,
-  mountNode: HTMLElement,
-  renderFn: (value: T, set: (fn: (v: T) => T) => void) => VNode
-) {
-  return Effect.gen(function* (_) {
-    const ref = yield* _(SubscriptionRef.make(initial));
-    let node: Node | null = null;
-    const set = (fn: (v: T) => T) => Effect.runSync(Ref.update(ref, fn));
-    yield* _(
-      Stream.runForEach(ref.changes, (value) =>
-        Effect.sync(() => {
-          const vnode = renderFn(value, set);
-          const newNode = render(vnode);
-          if (node && node.parentNode) {
-            node.parentNode.replaceChild(newNode, node);
-          } else if (!node && mountNode) {
-            mountNode.innerHTML = "";
-            mountNode.appendChild(newNode);
-          }
-          node = newNode;
-        })
-      )
-    );
-  });
+// --- Minimal hook state system ---
+let rerender: () => void = () => {};
+let hookStates: any[] = [];
+let currentHookIndex = 0;
+
+function useReactiveState<T>(initial: T): [T, (fn: (v: T) => T) => void] {
+  const idx = currentHookIndex++;
+  if (!hookStates[idx]) {
+    const ref = Ref.unsafeMake(initial);
+    hookStates[idx] = ref;
+  }
+  const ref = hookStates[idx] as Ref.Ref<T>;
+  const get = () => Effect.runSync(Ref.get(ref));
+  const set = (fn: (v: T) => T) => {
+    Effect.runSync(Ref.update(ref, fn));
+    rerender();
+  };
+  return [get(), set];
 }
 
-const Counter = (mountNode: HTMLElement) =>
-  useReactiveState(0, mountNode, (count, set) => (
+// --- Counter as a JSX component ---
+const Counter = () => {
+  const [count, set] = useReactiveState(0);
+  return (
     <div>
       <h1>Counter: {count}</h1>
       <button onClick={() => set((n) => n + 1)}>+1</button>
     </div>
-  ));
+  );
+};
 
-// --- Mount Counter at root ---
+// --- App as a JSX component ---
+const App = () => (
+  <div>
+    <Counter />
+    <Counter />
+  </div>
+);
+
+// --- Mount App at root and rerender on state changes ---
 const root = document.getElementById("root");
 if (root) {
-  Effect.runPromise(Counter(root));
+  rerender = () => render(<App />, root);
+  rerender();
 }
