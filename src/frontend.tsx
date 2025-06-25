@@ -73,7 +73,6 @@ function useReactiveState<T>(initial: T): [T, (fn: (v: T) => T) => void] {
   return [get(), set];
 }
 
-// --- Counter as a JSX component ---
 const Counter = () => {
   const [count, set] = useReactiveState(0);
   return (
@@ -84,15 +83,31 @@ const Counter = () => {
   );
 };
 
-// --- App as a JSX component ---
+const LabeledCounter = ({ label }: { label: string }) => {
+  const [currentLabel, set] = useReactiveState(label);
+  return (
+    <div style="border:1px solid #ccc; padding:1em; margin:1em 0;">
+      <h1>{currentLabel}</h1>
+      <input
+        type="text"
+        value={currentLabel}
+        onChange={(e: InputEvent) => {
+          const target = e.target as HTMLInputElement;
+          set(() => target.value);
+        }}
+      />
+      <Counter />
+    </div>
+  );
+};
+
 const App = () => (
   <div>
-    <Counter />
-    <Counter />
+    <LabeledCounter label="First nested counter" />
+    <LabeledCounter label="Second nested counter" />
   </div>
 );
 
-// --- Mount App at root and rerender on state changes ---
 const root = document.getElementById("root");
 if (root) {
   rerender = () => render(<App />, root);
