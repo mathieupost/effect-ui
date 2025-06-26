@@ -65,9 +65,9 @@ function isStream(value: any): value is Stream.Stream<any> {
 /**
  * Helper function to check if a value is a SubscriptionRef
  */
-function isSubscriptionRef(
-  value: any
-): value is SubscriptionRef.SubscriptionRef<any> {
+export function isSubscriptionRef<T>(
+  value: T | SubscriptionRef.SubscriptionRef<T>
+): value is SubscriptionRef.SubscriptionRef<T> {
   return (
     value &&
     typeof value === "object" &&

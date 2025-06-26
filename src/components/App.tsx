@@ -1,12 +1,38 @@
 /** @jsxImportSource ../core */
 import { Counter } from "./Counter";
 import { LabeledCounter } from "./LabeledCounter";
+import { Theme, ThemeProvider } from "./Theme";
+import { ThemedButton } from "./ThemedButton";
 
-export const App = () => (
-  <div>
-    <h1>Effect Dependency Injection Demo</h1>
+export const App = () => {
+  const darkTheme: Theme = {
+    primaryColor: "#61dafb",
+    backgroundColor: "#282c34",
+  };
 
-    <Counter />
-    <LabeledCounter />
-  </div>
-);
+  const lightTheme: Theme = {
+    primaryColor: "#2c5aa0",
+    backgroundColor: "#f5f5f5",
+  };
+
+  return (
+    <div>
+      <h1>Effect Dependency Injection Demo</h1>
+
+      {/* Regular components without theme */}
+      <Counter />
+      <LabeledCounter />
+
+      {/* Themed components using dependency injection */}
+      <ThemeProvider
+        theme={darkTheme}
+        child={<ThemedButton text="Dark Button" />}
+      />
+
+      <ThemeProvider
+        theme={lightTheme}
+        child={<ThemedButton text="Light Button" />}
+      />
+    </div>
+  );
+};
