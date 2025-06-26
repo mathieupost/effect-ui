@@ -1,115 +1,28 @@
-/** @jsx h */
-import * as Effect from "effect/Effect";
-import * as Ref from "effect/Ref";
+/** @jsxImportSource ./core */
+import { Effect, SubscriptionRef } from "effect";
+import { mount } from "./core/renderer";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
-}
+const Counter = () =>
+  Effect.gen(function* (_) {
+    const count = yield* _(SubscriptionRef.make(0));
+    const increment = SubscriptionRef.update(count, (n) => n + 1);
 
-type VNode = {
-  tag: string | ((props: any, ...children: any[]) => VNode);
-  props: Record<string, any>;
-  children: (VNode | string)[];
-};
-
-const h = (
-  tag: string | ((props: any, ...children: any[]) => VNode),
-  props: Record<string, any>,
-  ...children: (VNode | string)[]
-): VNode => ({
-  tag,
-  props,
-  children,
-});
-
-function render(vnode: VNode | string, mountNode: HTMLElement) {
-  currentHookIndex = 0;
-  mountNode.innerHTML = "";
-  mountNode.appendChild(renderNode(vnode));
-}
-
-function renderNode(vnode: VNode | string): Node {
-  if (typeof vnode !== "object") {
-    return document.createTextNode(vnode);
-  }
-  if (typeof vnode.tag === "function") {
-    return renderNode(vnode.tag(vnode.props, ...vnode.children));
-  }
-  const el = document.createElement(vnode.tag);
-  for (const [k, v] of Object.entries(vnode.props || {})) {
-    if (k.startsWith("on") && typeof v === "function") {
-      el.addEventListener(k.slice(2).toLowerCase(), v);
-    } else {
-      el.setAttribute(k, v);
-    }
-  }
-  for (const child of vnode.children) {
-    el.appendChild(renderNode(child));
-  }
-  return el;
-}
-
-// --- Minimal hook state system ---
-let rerender: () => void = () => {};
-let hookStates: any[] = [];
-let currentHookIndex = 0;
-
-function useReactiveState<T>(initial: T): [T, (fn: (v: T) => T) => void] {
-  const idx = currentHookIndex++;
-  if (!hookStates[idx]) {
-    const ref = Ref.unsafeMake(initial);
-    hookStates[idx] = ref;
-  }
-  const ref = hookStates[idx] as Ref.Ref<T>;
-  const get = () => Effect.runSync(Ref.get(ref));
-  const set = (fn: (v: T) => T) => {
-    Effect.runSync(Ref.update(ref, fn));
-    rerender();
-  };
-  return [get(), set];
-}
-
-const Counter = () => {
-  const [count, set] = useReactiveState(0);
-  return (
-    <div>
-      <h1>Counter: {count}</h1>
-      <button onClick={() => set((n) => n + 1)}>+1</button>
-    </div>
-  );
-};
-
-const LabeledCounter = ({ label }: { label: string }) => {
-  const [currentLabel, set] = useReactiveState(label);
-  return (
-    <div style="border:1px solid #ccc; padding:1em; margin:1em 0;">
-      <h1>{currentLabel}</h1>
-      <input
-        type="text"
-        value={currentLabel}
-        onChange={(e: InputEvent) => {
-          const target = e.target as HTMLInputElement;
-          set(() => target.value);
-        }}
-      />
-      <Counter />
-    </div>
-  );
-};
+    return (
+      <div>
+        <p>Count: {count}</p>
+        <button onClick={increment}>Increment</button>
+      </div>
+    );
+  });
 
 const App = () => (
   <div>
-    <LabeledCounter label="First nested counter" />
-    <LabeledCounter label="Second nested counter" />
+    <Counter />
+    <Counter />
   </div>
 );
 
 const root = document.getElementById("root");
 if (root) {
-  rerender = () => render(<App />, root);
-  rerender();
+  mount(root, App());
 }
