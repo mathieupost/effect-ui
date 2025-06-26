@@ -245,11 +245,19 @@ function renderReactive(
     for (const key in vnode.props) {
       if (key.startsWith("on")) {
         // Event handlers are Effects to be run
-        const handler = vnode.props[key] as Effect.Effect<void>;
-        element.addEventListener(key.slice(2).toLowerCase(), () => {
-          console.log("event", key);
-          // When the event fires, we fork the Effect.
-          Effect.runFork(handler);
+        const handler = vnode.props[key] as
+          | Effect.Effect<void>
+          | ((...args: any[]) => Effect.Effect<void>)
+          | ((...args: any[]) => void);
+        element.addEventListener(key.slice(2).toLowerCase(), (...args) => {
+          if (typeof handler === "function") {
+            const result = handler(...args);
+            if (Effect.isEffect(result)) {
+              Effect.runFork(result);
+            }
+          } else {
+            Effect.runFork(handler);
+          }
         });
       } else if (key !== "children") {
         // Handle reactive props
