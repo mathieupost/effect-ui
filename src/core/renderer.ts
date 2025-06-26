@@ -68,11 +68,6 @@ function isStream(value: any): value is Stream.Stream<any> {
 function isSubscriptionRef(
   value: any
 ): value is SubscriptionRef.SubscriptionRef<any> {
-  console.log("isSubscriptionRef", {
-    type: typeof value,
-    tag: value?._tag,
-    changes: value?.changes,
-  });
   return (
     value &&
     typeof value === "object" &&
@@ -92,7 +87,6 @@ function renderReactive(
   never,
   Scope.Scope
 > {
-  console.log("renderReactive", vnode);
   // 1. Handle primitive nodes (strings, numbers)
   if (
     typeof vnode === "string" ||
@@ -115,13 +109,9 @@ function renderReactive(
 
   // 3. Handle SubscriptionRef nodes (reactive state) with proper subscriptions
   if (isSubscriptionRef(vnode)) {
-    console.log("SubscriptionRef", vnode);
     return Effect.gen(function* (_) {
-      console.log("Handling SubscriptionRef", vnode);
-
       // Get initial value and render it
       const initialValue = yield* _(SubscriptionRef.get(vnode));
-      console.log("Initial value:", initialValue);
 
       const { node: initialNode, cleanup: initialCleanup } = yield* _(
         renderReactive(initialValue)
@@ -133,18 +123,13 @@ function renderReactive(
       // Subscribe to the SubscriptionRef changes stream
       const subscriptionFiber = yield* _(
         Effect.gen(function* (_) {
-          console.log("Setting up subscription to changes stream");
-
           // Get the changes stream directly from the SubscriptionRef
           const changesStream = vnode.changes;
-          console.log("Got changes stream:", changesStream);
 
           // We want ALL changes, not skipping the first one since we're setting up after initial render
           yield* _(
             Stream.runForEach(changesStream, (newValue) =>
               Effect.gen(function* (_) {
-                console.log("SubscriptionRef changed to", newValue);
-
                 // Clean up previous render
                 yield* _(currentCleanup);
 
@@ -156,9 +141,6 @@ function renderReactive(
                 // Replace in DOM
                 if (currentNode.parentNode) {
                   currentNode.parentNode.replaceChild(newNode, currentNode);
-                  console.log("DOM updated via SubscriptionRef");
-                } else {
-                  console.log("No parent node found for replacement");
                 }
 
                 currentNode = newNode;
@@ -168,8 +150,6 @@ function renderReactive(
           );
         }).pipe(Effect.forkDaemon)
       );
-
-      console.log("Subscription fiber started");
 
       return {
         node: initialNode,
