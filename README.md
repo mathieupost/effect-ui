@@ -70,12 +70,13 @@ effect-ui/
 A simple counter component:
 
 ```tsx
-import { Effect, SubscriptionRef } from "effect";
+import { Effect } from "effect";
+import { ref, update } from "@/core/props";
 
 export const Counter = () =>
   Effect.gen(function* (_) {
-    const count = yield* _(SubscriptionRef.make(0));
-    const increment = SubscriptionRef.update(count, (n) => n + 1);
+    const count = yield* ref(_, 0);
+    const increment = update(count, (n) => n + 1);
 
     return <button onClick={increment}>You clicked {count} times</button>;
   });

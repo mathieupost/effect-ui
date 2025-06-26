@@ -1,6 +1,6 @@
 /** @jsxImportSource ../core */
+import { VNode } from "@/core/jsx-runtime";
 import { Context, Effect } from "effect";
-import { VNode } from "../core/jsx-runtime";
 
 // Define a Theme service
 export interface Theme {

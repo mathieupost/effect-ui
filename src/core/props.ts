@@ -1,4 +1,4 @@
-import { SubscriptionRef } from "effect";
+import { Effect, SubscriptionRef } from "effect";
 
 export type RefProps<T extends object> = {
   [K in keyof T]: T[K] extends SubscriptionRef.SubscriptionRef<infer U>
@@ -13,3 +13,11 @@ export type RefProps<T extends object> = {
       : never
     : never;
 };
+
+export const ref = <T>(_: Effect.Adapter, value: T) =>
+  _(SubscriptionRef.make(value));
+
+export const update = <T>(
+  ref: SubscriptionRef.SubscriptionRef<T>,
+  updater: (value: T) => T
+) => SubscriptionRef.update(ref, updater);
