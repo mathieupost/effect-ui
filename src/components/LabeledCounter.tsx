@@ -4,17 +4,15 @@ import { Counter } from "./Counter";
 
 export const LabeledCounter = () =>
   Effect.gen(function* (_) {
-    const label = yield* _(SubscriptionRef.make(""));
+    const label = yield* _(SubscriptionRef.make("Default Label"));
     const setLabel = (l: string) => SubscriptionRef.update(label, () => l);
     return (
       <div>
+        Edit the label to see the counter update:{" "}
         <input
           type="text"
           value={label}
           onInput={(e: Event) => setLabel((e.target as HTMLInputElement).value)}
-          onChange={() => {
-            console.log("onChange");
-          }}
         />
         <Counter label={label} />
       </div>

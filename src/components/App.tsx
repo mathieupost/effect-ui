@@ -1,7 +1,7 @@
 /** @jsxImportSource ../core */
 import { Counter } from "./Counter";
 import { LabeledCounter } from "./LabeledCounter";
-import { Theme, ThemeProvider } from "./Theme";
+import { Theme, ThemeProvider } from "./ThemeProvider";
 import { ThemedButton } from "./ThemedButton";
 
 export const App = () => {
@@ -16,8 +16,8 @@ export const App = () => {
   };
 
   return (
-    <div>
-      <h1>Effect Dependency Injection Demo</h1>
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <h1>Effect UI Demo</h1>
 
       {/* Regular components without theme */}
       <Counter />

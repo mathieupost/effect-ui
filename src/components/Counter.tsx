@@ -8,10 +8,10 @@ export const Counter = ({ label = "Counter" }: RefProps<{ label?: string }>) =>
     const increment = SubscriptionRef.update(count, (n) => n + 1);
 
     return (
-      <div>
-        <p>
+      <div style="border: 1px solid blue; padding: 10px;">
+        <div>
           {label}: {count}
-        </p>
+        </div>
         <button onClick={increment}>Increment</button>
       </div>
     );

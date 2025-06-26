@@ -1,6 +1,6 @@
 /** @jsxImportSource ../core */
 import { Effect, SubscriptionRef } from "effect";
-import { Theme } from "./Theme";
+import { Theme } from "./ThemeProvider";
 
 // Component that consumes the theme
 export const ThemedButton = ({ text }: { text: string }) =>

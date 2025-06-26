@@ -1,14 +1,5 @@
-import { Effect, Fiber, Ref, Scope, Stream, SubscriptionRef } from "effect";
+import { Effect, Fiber, Scope, Stream, SubscriptionRef } from "effect";
 import { VNode, VNodeChild } from "./jsx-runtime";
-
-/**
- * Represents a reactive DOM node that can be updated
- */
-interface ReactiveNode {
-  currentNode: Node;
-  update: (newValue: VNodeChild) => Effect.Effect<void>;
-  cleanup: Effect.Effect<void>;
-}
 
 /**
  * The main entry point. Mounts a component into a DOM container.
@@ -37,18 +28,6 @@ export const mount = (
   // Return an unmount function
   return () => Effect.runFork(Fiber.interrupt(appFiber));
 };
-
-/**
- * Helper function to check if a value is a Ref
- */
-function isRef(value: any): value is Ref.Ref<any> {
-  return (
-    value &&
-    typeof value === "object" &&
-    "_tag" in value &&
-    value._tag === "Ref"
-  );
-}
 
 /**
  * Helper function to check if a value is a Stream
@@ -281,15 +260,5 @@ function renderReactive(
       node: element,
       cleanup: Effect.all(childCleanups, { discard: true }),
     };
-  });
-}
-
-/**
- * Legacy render function for backwards compatibility
- */
-function render(vnode: VNodeChild): Effect.Effect<Node, never, Scope.Scope> {
-  return Effect.gen(function* (_) {
-    const { node } = yield* _(renderReactive(vnode));
-    return node;
   });
 }
