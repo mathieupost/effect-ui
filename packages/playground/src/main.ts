@@ -1,18 +1,32 @@
 import { Effect } from "effect";
-import { Component } from "effect-ui/core/component";
+import { createEffect, createSignal } from "effect-ui/core/state";
+import { render } from "effect-ui/runtime/renderer";
 import "./style.css";
 
-const App: Component<{}, never, never> = () =>
-  Effect.sync(() => {
-    const app = document.createElement("div");
-    app.innerHTML = `
-      <h1>Hello Effect-UI!</h1>
-    `;
-    return app;
+const App = Effect.sync(() => {
+  const [count, setCount] = createSignal(0);
+
+  const h1 = document.createElement("h1");
+  const button = document.createElement("button");
+
+  createEffect(() => {
+    h1.textContent = `Count: ${count()}`;
   });
 
-const program = App({});
+  button.textContent = "Increment";
+  button.onclick = () => {
+    setCount(count() + 1);
+  };
 
-// We will need a runtime to execute this effect and render the element.
-// For now, let's just log the effect.
-console.log(program);
+  const container = document.createElement("div");
+  container.appendChild(h1);
+  container.appendChild(button);
+
+  return container;
+});
+
+const container = document.querySelector("#app");
+
+if (container) {
+  render(App, container);
+}
