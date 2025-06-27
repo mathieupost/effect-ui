@@ -71,3 +71,17 @@ export const createEffect = <A>(fn: () => A): void => {
   };
   effect();
 };
+
+/**
+ * Creates a memoized, read-only signal that is derived from other signals.
+ *
+ * The memoized value is re-computed only when the signals it depends on change.
+ *
+ * @param fn - The function to compute the derived value.
+ * @returns A getter function for the memoized value.
+ */
+export const createMemo = <A>(fn: () => A): (() => A) => {
+  const [get, set] = createSignal<A>(undefined as any);
+  createEffect(() => set(fn()));
+  return get;
+};

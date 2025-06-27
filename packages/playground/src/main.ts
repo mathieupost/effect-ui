@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { Component } from "effect-ui/core/component";
-import { createSignal } from "effect-ui/core/state";
+import { createMemo, createSignal } from "effect-ui/core/state";
 import { bindText } from "effect-ui/runtime/bindings";
 import { render } from "effect-ui/runtime/renderer";
 import "./style.css";
@@ -10,12 +10,17 @@ const App: Component<{}, never, Theme> = () =>
   Effect.gen(function* (_: Effect.Adapter) {
     const theme = yield* _(Theme);
     const [count, setCount] = createSignal(0);
+    const doubledCount = createMemo(() => count() * 2);
 
     const h1 = document.createElement("h1");
+    const h2 = document.createElement("h2");
     const button = document.createElement("button");
 
     h1.style.color = theme.color;
     bindText(h1, () => `Count: ${count()}`);
+
+    h2.style.color = theme.color;
+    bindText(h2, () => `Doubled: ${doubledCount()}`);
 
     button.textContent = "Increment";
     button.onclick = () => {
@@ -24,6 +29,7 @@ const App: Component<{}, never, Theme> = () =>
 
     const container = document.createElement("div");
     container.appendChild(h1);
+    container.appendChild(h2);
     container.appendChild(button);
 
     return container;
