@@ -17,10 +17,18 @@ const App: Component<{}, never, Theme> = () =>
     const button = document.createElement("button");
 
     h1.style.color = theme.color;
-    bindText(h1, () => `Count: ${count()}`);
+    const countPrefixText = document.createTextNode(`Count: `);
+    const countText = document.createTextNode(`${count()}`);
+    bindText(countText, () => `${count()}`);
+    h1.appendChild(countPrefixText);
+    h1.appendChild(countText);
 
     h2.style.color = theme.color;
-    bindText(h2, () => `Doubled: ${doubledCount()}`);
+    const doubledPrefixText = document.createTextNode(`Doubled: `);
+    const doubledCountText = document.createTextNode(`${doubledCount()}`);
+    bindText(doubledCountText, () => `${doubledCount()}`);
+    h2.appendChild(doubledPrefixText);
+    h2.appendChild(doubledCountText);
 
     button.textContent = "Increment";
     button.onclick = () => {

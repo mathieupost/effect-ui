@@ -7,7 +7,7 @@ import { createEffect } from "../core/state";
  * @param fn A function that returns the text content. This function will be
  *   re-run whenever the signals it depends on change.
  */
-export const bindText = (element: HTMLElement, fn: () => string) => {
+export const bindText = (element: HTMLElement | Text, fn: () => string) => {
   createEffect(() => {
     element.textContent = fn();
   });
