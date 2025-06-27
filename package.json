@@ -1,0 +1,13 @@
+{
+  "name": "effect-ui-monorepo",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^24.0.4",
+    "eslint": "^9.29.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "effect": "^3.16.10"
+  }
+}

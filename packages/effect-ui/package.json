@@ -1,0 +1,17 @@
+{
+  "name": "effect-ui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "effect": "^3.16.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
