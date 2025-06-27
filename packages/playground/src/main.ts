@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import { createEffect, createSignal } from "effect-ui/core/state";
+import { createSignal } from "effect-ui/core/state";
+import { bindText } from "effect-ui/runtime/bindings";
 import { render } from "effect-ui/runtime/renderer";
 import "./style.css";
 
@@ -9,9 +10,7 @@ const App = Effect.sync(() => {
   const h1 = document.createElement("h1");
   const button = document.createElement("button");
 
-  createEffect(() => {
-    h1.textContent = `Count: ${count()}`;
-  });
+  bindText(h1, () => `Count: ${count()}`);
 
   button.textContent = "Increment";
   button.onclick = () => {
