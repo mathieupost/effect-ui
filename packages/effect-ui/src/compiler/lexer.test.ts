@@ -27,4 +27,38 @@ describe("Lexer", () => {
 
     expect(simplifiedResult).toEqual(expectedTokens);
   });
+
+  it("should tokenize an identifier", () => {
+    const source = "my_identifier";
+    const expectedTokens = [
+      { type: TokenType.Identifier, lexeme: "my_identifier" },
+      { type: TokenType.EOF, lexeme: "" },
+    ];
+
+    const program = scanTokens(source);
+    const result = Effect.runSync(program);
+    const simplifiedResult = result.map(({ type, lexeme }) => ({
+      type,
+      lexeme,
+    }));
+
+    expect(simplifiedResult).toEqual(expectedTokens);
+  });
+
+  it("should tokenize a string literal", () => {
+    const source = `"hello world"`;
+    const expectedTokens = [
+      { type: TokenType.String, lexeme: `"hello world"` },
+      { type: TokenType.EOF, lexeme: "" },
+    ];
+
+    const program = scanTokens(source);
+    const result = Effect.runSync(program);
+    const simplifiedResult = result.map(({ type, lexeme }) => ({
+      type,
+      lexeme,
+    }));
+
+    expect(simplifiedResult).toEqual(expectedTokens);
+  });
 });

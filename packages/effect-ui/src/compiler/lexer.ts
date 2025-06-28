@@ -107,7 +107,15 @@ const scanToken = (
       case "\n":
         return; // advance already handles line/col adjustment
 
+      case '"':
+      case "'":
+        return yield* _(string(stateRef, char));
+
       default: {
+        if (isAlpha(char)) {
+          return yield* _(identifier(stateRef));
+        }
+
         const state = yield* _(Ref.get(stateRef));
         return yield* _(
           Effect.fail(new UnexpectedCharacterError(state.line, state.col, char))
@@ -161,3 +169,63 @@ const addToken =
       };
       return { ...state, tokens: [...state.tokens, token] };
     });
+
+const string = (
+  stateRef: Ref.Ref<LexerState>,
+  quoteType: '"' | "'"
+): Effect.Effect<void, LexerError> =>
+  Effect.gen(function* (_) {
+    while (
+      (yield* _(peek(stateRef))) !== quoteType &&
+      !(yield* _(isAtEnd(stateRef)))
+    ) {
+      yield* _(advance(stateRef));
+    }
+
+    if (yield* _(isAtEnd(stateRef))) {
+      const state = yield* _(Ref.get(stateRef));
+      return yield* _(
+        Effect.fail(new UnexpectedCharacterError(state.line, state.col, "EOF"))
+      );
+    }
+
+    // The closing quote.
+    yield* _(advance(stateRef));
+
+    // Trim the surrounding quotes.
+    const state = yield* _(Ref.get(stateRef));
+    const value = state.source.substring(state.start + 1, state.current - 1);
+    yield* _(addToken(stateRef)(TokenType.String, value));
+  });
+
+const identifier = (
+  stateRef: Ref.Ref<LexerState>
+): Effect.Effect<void, LexerError> =>
+  Effect.gen(function* (_) {
+    while (isAlphaNumeric(yield* _(peek(stateRef)))) {
+      yield* _(advance(stateRef));
+    }
+    yield* _(addToken(stateRef)(TokenType.Identifier));
+  });
+
+const peek = (stateRef: Ref.Ref<LexerState>): Effect.Effect<string> =>
+  Effect.map(Ref.get(stateRef), (state) => {
+    if (state.current >= state.source.length) return "\0";
+    return state.source.charAt(state.current);
+  });
+
+const isAtEnd = (stateRef: Ref.Ref<LexerState>): Effect.Effect<boolean> =>
+  Effect.map(
+    Ref.get(stateRef),
+    (state) => state.current >= state.source.length
+  );
+
+const isAlpha = (char: string): boolean => {
+  return (
+    (char >= "a" && char <= "z") || (char >= "A" && char <= "Z") || char === "_"
+  );
+};
+
+const isAlphaNumeric = (char: string): boolean => {
+  return isAlpha(char) || (char >= "0" && char <= "9");
+};
