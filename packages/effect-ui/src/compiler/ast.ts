@@ -1,36 +1,29 @@
-export type ASTNode = ElementNode | TextNode | ExpressionNode;
+export type ASTNode = ElementNode; // | TextNode | CommentNode etc.
 
 export interface ElementNode {
-  type: "Element";
-  tagName: string;
-  attributes: AttributeNode[];
-  children: ASTNode[];
+  readonly type: "Element";
+  readonly tagName: string;
+  readonly attributes: readonly AttributeNode[];
+  readonly children: readonly ASTNode[];
 }
 
-export type AttributeNode = NormalAttribute | SpreadAttribute;
-
-export interface NormalAttribute {
-  type: "Attribute";
-  name: string;
-  value: StringLiteral | ExpressionNode;
-}
-
-export interface SpreadAttribute {
-  type: "SpreadAttribute";
-  expression: ExpressionNode;
+export interface AttributeNode {
+  readonly type: "Attribute";
+  readonly name: string;
+  readonly value: StringLiteral | ExpressionNode;
 }
 
 export interface StringLiteral {
-  type: "StringLiteral";
-  value: string;
+  readonly type: "StringLiteral";
+  readonly value: string;
 }
 
 export interface TextNode {
-  type: "Text";
-  content: string;
+  readonly type: "Text";
+  readonly content: string;
 }
 
 export interface ExpressionNode {
-  type: "Expression";
-  content: string;
+  readonly type: "Expression";
+  readonly content: string;
 }

@@ -1,5 +1,5 @@
 import { Effect, Ref } from "effect";
-import { ASTNode } from "./ast";
+import { ASTNode, AttributeNode } from "./ast";
 import { Token, TokenType } from "./token";
 
 // --- Error Types ---
@@ -87,7 +87,42 @@ const element = (
     );
     const tagName = tagNameToken.lexeme;
 
-    // TODO: Parse attributes here
+    const attributesLoop: (
+      attrs: readonly AttributeNode[]
+    ) => Effect.Effect<readonly AttributeNode[], ParserError> = (attrs) =>
+      Effect.gen(function* (_) {
+        const state = yield* _(Ref.get(stateRef));
+        if (peek(state).type !== TokenType.Identifier) {
+          return attrs;
+        }
+
+        const nameToken = yield* _(
+          _consume(TokenType.Identifier, "Expected attribute name.")
+        );
+        yield* _(
+          _consume(TokenType.Equals, "Expected '=' after attribute name.")
+        );
+        const valueToken = yield* _(
+          _consume(
+            TokenType.String,
+            "Expected string literal for attribute value."
+          )
+        );
+
+        const attribute: AttributeNode = {
+          type: "Attribute",
+          name: nameToken.lexeme,
+          value: {
+            type: "StringLiteral",
+            value: valueToken.literal as string,
+          },
+        };
+
+        const newAttrs = [...attrs, attribute];
+        return yield* _(attributesLoop(newAttrs));
+      });
+
+    const attributes = yield* _(attributesLoop([]));
 
     yield* _(_consume(TokenType.GreaterThan, "Expected '>' after tag name."));
 
@@ -146,7 +181,7 @@ const element = (
     return {
       type: "Element",
       tagName: tagName,
-      attributes: [],
+      attributes: attributes as AttributeNode[],
       children: children as ASTNode[],
     };
   });

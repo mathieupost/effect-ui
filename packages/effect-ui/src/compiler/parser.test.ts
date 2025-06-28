@@ -45,4 +45,31 @@ describe("parser", () => {
       },
     ]);
   });
+
+  it("should parse attributes on an element", () => {
+    const source = `<div class="main"></div>`;
+    const program = Effect.flatMap(lex(source), (tokens) => parse(tokens));
+    const result = Effect.runSync(Effect.either(program));
+
+    expect(Either.isRight(result)).toBe(true);
+    const ast = (result as Either.Right<any, ASTNode[]>).right;
+
+    expect(ast).toEqual([
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [
+          {
+            type: "Attribute",
+            name: "class",
+            value: {
+              type: "StringLiteral",
+              value: "main",
+            },
+          },
+        ],
+        children: [],
+      },
+    ]);
+  });
 });
