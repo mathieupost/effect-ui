@@ -2,6 +2,24 @@ import { Effect, Ref } from "effect";
 import { ASTNode, AttributeNode, TextNode } from "./ast";
 import { Token, TokenType } from "./token";
 
+// --- Constants ---
+const VOID_ELEMENTS: ReadonlySet<string> = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+
 // --- Error Types ---
 export class ParserError {
   readonly _tag = "ParserError";
@@ -225,13 +243,15 @@ const element = (
 
     const attributes = yield* _(attributesLoop([]));
 
+    // Handle self-closing tags (both void and regular)
     const state = yield* _(Ref.get(stateRef));
-    if (peek(state).type === TokenType.Slash) {
+    const isSelfClosing = peek(state).type === TokenType.Slash;
+    if (isSelfClosing) {
       yield* _(
         _consume(TokenType.Slash, "Expected '/>' for self-closing tag.")
       );
       const endToken = yield* _(
-        _consume(TokenType.GreaterThan, "Expected '>' after self-closing tag.")
+        _consume(TokenType.GreaterThan, "Expected '>' after '/>'.")
       );
       return {
         type: "Element",
@@ -245,7 +265,20 @@ const element = (
       };
     }
 
-    yield* _(_consume(TokenType.GreaterThan, "Expected '>' after tag name."));
+    // Handle tags with content
+    yield* _(_consume(TokenType.GreaterThan, "Expected '>' after attributes."));
+
+    // Void elements cannot have children.
+    if (VOID_ELEMENTS.has(tagName)) {
+      return yield* _(
+        Effect.fail(
+          new ParserError(
+            `Void element <${tagName}> cannot have children and must be self-closing.`,
+            openingToken
+          )
+        )
+      );
+    }
 
     const childrenLoop: (
       nodes: readonly ASTNode[]
@@ -291,7 +324,7 @@ const element = (
           Effect.fail(
             new ParserError(
               `Mismatched closing tag. Expected '${tagName}' but got '${closingTagToken.lexeme}'.`,
-              lessThanToken
+              closingTagToken
             )
           ),
       })

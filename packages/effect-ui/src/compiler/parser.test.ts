@@ -219,6 +219,125 @@ describe("Parser", () => {
     expect(ast).toEqual(expected);
   });
 
+  it("should parse a self-closing void element", () => {
+    const source = "<br/>";
+    const expected = [
+      {
+        type: "Element",
+        tagName: "br",
+        attributes: [],
+        children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 6 },
+        },
+      },
+    ];
+    const result = runParser(source);
+    const ast = expectSuccess(result);
+    expect(ast).toEqual(expected);
+  });
+
+  it("should fail to parse a void element with a closing tag", () => {
+    const source = "<br></br>";
+    const result = runParser(source);
+    const error = expectFailure(result);
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
+      expect(error.message).toContain(
+        "Void element <br> cannot have children and must be self-closing."
+      );
+    }
+  });
+
+  it("should fail to parse a void element with children", () => {
+    const source = "<img>hello</img>";
+    const result = runParser(source);
+    const error = expectFailure(result);
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
+      expect(error.message).toContain(
+        "Void element <img> cannot have children and must be self-closing."
+      );
+    }
+  });
+
+  it("should parse a self-closing void element with attributes", () => {
+    const source = `<img src="cat.jpg"/>`;
+    const expected = [
+      {
+        type: "Element",
+        tagName: "img",
+        attributes: [
+          {
+            type: "Attribute",
+            name: "src",
+            value: {
+              type: "StringLiteral",
+              value: "cat.jpg",
+              location: {
+                start: { line: 1, column: 10 },
+                end: { line: 1, column: 19 },
+              },
+            },
+          },
+        ],
+        children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 21 },
+        },
+      },
+    ];
+    const result = runParser(source);
+    const ast = expectSuccess(result);
+    expect(ast).toEqual(expected);
+  });
+
+  it("should parse a complex structure with mixed content", () => {
+    const source = `
+      <div class="container">
+        <h1>{title}</h1>
+        <p>This is a paragraph with <strong>bold</strong> text.</p>
+        <br/>
+        <input type="text" value={initialValue}/>
+      </div>
+    `;
+    const result = runParser(source.trim());
+    const ast = expectSuccess(result);
+
+    expect(ast).toHaveLength(1);
+    const root = ast[0];
+    expect(root.type).toBe("Element");
+
+    if (root.type === "Element") {
+      expect(root.tagName).toBe("div");
+      expect(root.attributes).toHaveLength(1);
+      expect(root.children).toHaveLength(9); // h1, p, br, input, and whitespace text nodes
+
+      const h1 = root.children[1];
+      if (h1.type === "Element") {
+        expect(h1.tagName).toBe("h1");
+        expect(h1.children[0].type).toBe("Expression");
+      } else {
+        expect.fail("Expected h1 element");
+      }
+
+      const p = root.children[3];
+      if (p.type === "Element") {
+        expect(p.tagName).toBe("p");
+        expect(p.children).toHaveLength(3); // Text, strong, Text
+        const strong = p.children[1];
+        if (strong.type === "Element") {
+          expect(strong.tagName).toBe("strong");
+          expect(strong.children[0].type).toBe("Text");
+        }
+      } else {
+        expect.fail("Expected p element");
+      }
+    }
+  });
+
   it("should report an error for mismatched closing tags", () => {
     const source = "<div></p>";
     const result = runParser(source);
@@ -230,7 +349,7 @@ describe("Parser", () => {
         "Mismatched closing tag. Expected 'div' but got 'p'"
       );
       expect(error.line).toBe(1);
-      expect(error.col).toBe(6);
+      expect(error.col).toBe(8);
     }
   });
 
