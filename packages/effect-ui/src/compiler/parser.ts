@@ -1,105 +1,204 @@
-import { Effect } from "effect";
+import { Effect, Ref } from "effect";
 import { ASTNode } from "./ast";
 import { Token, TokenType } from "./token";
 
+// --- Error Types ---
 export class ParserError {
-  _tag = "ParserError";
-  constructor(readonly message: string) {}
+  readonly _tag = "ParserError";
+  constructor(readonly message: string, readonly token?: Token) {}
 }
 
-class Parser {
-  constructor(private readonly tokens: readonly Token[]) {}
+// --- Parser State ---
+interface ParserState {
+  readonly tokens: readonly Token[];
+  readonly current: number;
+}
 
-  private current = 0;
+const makeParserState = (tokens: readonly Token[]): ParserState => ({
+  tokens,
+  current: 0,
+});
 
-  parse(): Effect.Effect<ASTNode[], ParserError> {
-    return Effect.try({
-      try: () => {
-        const nodes: ASTNode[] = [];
-        while (!this.isAtEnd()) {
-          const node = this.declaration();
-          if (node) {
-            nodes.push(node);
-          }
+// --- Main Public API ---
+export const parse = (
+  tokens: readonly Token[]
+): Effect.Effect<ASTNode[], ParserError> =>
+  Effect.gen(function* (_) {
+    // We don't care about whitespace during parsing
+    const stateRef = yield* _(
+      Ref.make(
+        makeParserState(tokens.filter((t) => t.type !== TokenType.Whitespace))
+      )
+    );
+
+    const loop: (
+      nodes: readonly ASTNode[]
+    ) => Effect.Effect<readonly ASTNode[], ParserError> = (nodes) =>
+      Effect.gen(function* (_) {
+        const state = yield* _(Ref.get(stateRef));
+        if (isAtEnd(state)) {
+          return nodes;
         }
-        return nodes;
-      },
-      catch: (unknown) => new ParserError((unknown as Error).message),
-    });
-  }
 
-  private declaration(): ASTNode | null {
-    if (this.match(TokenType.LessThan)) {
-      return this.element();
+        const node = yield* _(declaration(stateRef));
+        const newNodes = node ? [...nodes, node] : nodes;
+        return yield* _(loop(newNodes));
+      });
+
+    const allNodes = yield* _(loop([]));
+    return allNodes as ASTNode[];
+  });
+
+// --- Recursive Descent Helpers ---
+
+const declaration = (
+  stateRef: Ref.Ref<ParserState>
+): Effect.Effect<ASTNode | null, ParserError> =>
+  Effect.gen(function* (_) {
+    const state = yield* _(Ref.get(stateRef));
+    if (peek(state).type === TokenType.LessThan) {
+      if (peekNext(state).type === TokenType.Slash) {
+        return yield* _(
+          Effect.fail(
+            new ParserError("Unexpected closing tag.", peekNext(state))
+          )
+        );
+      }
+      return yield* _(element(stateRef));
     }
+
     // Other top-level nodes like text, comments, etc. will go here
     // For now, we'll just advance past other tokens
-    this.advance();
+    yield* _(advance(stateRef));
     return null; // Temporary
-  }
+  });
 
-  private element(): ASTNode {
-    const tagName = this.consume(TokenType.Identifier, "Expected tag name.");
-    this.consume(TokenType.GreaterThan, "Expected '>' after tag name.");
+const element = (
+  stateRef: Ref.Ref<ParserState>
+): Effect.Effect<ASTNode, ParserError> =>
+  Effect.gen(function* (_) {
+    const _consume = (type: TokenType, message: string) =>
+      consume(stateRef, type, message);
 
-    // For now, we'll assume no children and an immediate closing tag
-    this.consume(TokenType.LessThan, "Expected '<' for closing tag.");
-    this.consume(TokenType.Slash, "Expected '/' for closing tag.");
-    this.consume(
-      TokenType.Identifier,
-      `Expected closing tag for '${tagName.lexeme}'.`
+    // Opening tag
+    yield* _(_consume(TokenType.LessThan, "Expected '<' to start an element."));
+    const tagNameToken = yield* _(
+      _consume(TokenType.Identifier, "Expected tag name.")
     );
-    this.consume(TokenType.GreaterThan, "Expected '>' after closing tag name.");
+    const tagName = tagNameToken.lexeme;
+
+    // TODO: Parse attributes here
+
+    yield* _(_consume(TokenType.GreaterThan, "Expected '>' after tag name."));
+
+    const childrenLoop: (
+      nodes: readonly ASTNode[]
+    ) => Effect.Effect<readonly ASTNode[], ParserError> = (nodes) =>
+      Effect.gen(function* (_) {
+        const state = yield* _(Ref.get(stateRef));
+
+        if (
+          peek(state).type === TokenType.LessThan &&
+          peekNext(state).type === TokenType.Slash
+        ) {
+          return nodes;
+        }
+
+        if (isAtEnd(state)) {
+          return yield* _(
+            Effect.fail(
+              new ParserError(`Unclosed tag '${tagName}'.`, tagNameToken)
+            )
+          );
+        }
+
+        const child = yield* _(declaration(stateRef));
+        const newNodes = child ? [...nodes, child] : nodes;
+        return yield* _(childrenLoop(newNodes));
+      });
+
+    const children = yield* _(childrenLoop([]));
+
+    // Closing tag
+    yield* _(
+      _consume(TokenType.LessThan, `Expected closing tag for '${tagName}'.`)
+    );
+    yield* _(_consume(TokenType.Slash, "Expected '/' for closing tag."));
+    const closingTagToken = yield* _(
+      _consume(TokenType.Identifier, `Expected closing tag name '${tagName}'.`)
+    );
+
+    if (tagName !== closingTagToken.lexeme) {
+      return yield* _(
+        Effect.fail(
+          new ParserError(
+            `Mismatched closing tag. Expected '${tagName}' but got '${closingTagToken.lexeme}'.`,
+            closingTagToken
+          )
+        )
+      );
+    }
+
+    yield* _(
+      _consume(TokenType.GreaterThan, "Expected '>' after closing tag name.")
+    );
 
     return {
       type: "Element",
-      tagName: tagName.lexeme,
+      tagName: tagName,
       attributes: [],
-      children: [],
+      children: children as ASTNode[],
     };
-  }
+  });
 
-  private consume(type: TokenType, message: string): Token {
-    if (this.check(type)) return this.advance();
-    throw new ParserError(message);
-  }
+// --- State & Token Helpers ---
 
-  private match(...types: TokenType[]): boolean {
-    for (const type of types) {
-      if (this.check(type)) {
-        this.advance();
-        return true;
-      }
-    }
-    return false;
-  }
+const consume = (
+  stateRef: Ref.Ref<ParserState>,
+  type: TokenType,
+  message: string
+): Effect.Effect<Token, ParserError> =>
+  Effect.gen(function* (_) {
+    const state = yield* _(Ref.get(stateRef));
+    return yield* _(
+      Effect.if(check(state, type), {
+        onTrue: () => advance(stateRef),
+        onFalse: () => {
+          const token = peek(state);
+          return Effect.fail(
+            new ParserError(`${message} Got ${token.type} instead.`, token)
+          );
+        },
+      })
+    );
+  });
 
-  private check(type: TokenType): boolean {
-    if (this.isAtEnd()) return false;
-    return this.peek().type === type;
-  }
-
-  private isAtEnd(): boolean {
-    return this.peek().type === TokenType.EOF;
-  }
-
-  private peek(): Token {
-    return this.tokens[this.current];
-  }
-
-  private previous(): Token {
-    return this.tokens[this.current - 1];
-  }
-
-  private advance(): Token {
-    if (!this.isAtEnd()) this.current++;
-    return this.previous();
-  }
-}
-
-export const parse = (
-  tokens: readonly Token[]
-): Effect.Effect<ASTNode[], ParserError> => {
-  const parser = new Parser(tokens);
-  return parser.parse();
+const check = (state: ParserState, type: TokenType): boolean => {
+  if (isAtEnd(state)) return false;
+  return peek(state).type === type;
 };
+
+const isAtEnd = (state: ParserState): boolean => {
+  return peek(state).type === TokenType.EOF;
+};
+
+const peek = (state: ParserState): Token => {
+  return state.tokens[state.current];
+};
+
+const peekNext = (state: ParserState): Token => {
+  if (state.current + 1 >= state.tokens.length) {
+    // Return EOF if we are at the end
+    return state.tokens[state.tokens.length - 1];
+  }
+  return state.tokens[state.current + 1];
+};
+
+const advance = (stateRef: Ref.Ref<ParserState>): Effect.Effect<Token> =>
+  Ref.modify(stateRef, (state) => {
+    const consumedToken = peek(state);
+    const nextState: ParserState = isAtEnd(state)
+      ? state
+      : { ...state, current: state.current + 1 };
+    return [consumedToken, nextState];
+  });
