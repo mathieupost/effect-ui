@@ -33,7 +33,7 @@ const makeLexerState = (source: string): LexerState => ({
 });
 
 // --- Main Public API ---
-export const scanTokens = (
+export const lex = (
   source: string
 ): Effect.Effect<readonly Token[], LexerError> =>
   Effect.gen(function* (_) {

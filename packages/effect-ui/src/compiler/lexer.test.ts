@@ -1,11 +1,11 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { scanTokens } from "./lexer";
+import { lex } from "./lexer";
 import { TokenType } from "./token";
 
 describe("Lexer", () => {
   const runLexer = (source: string) => {
-    const program = scanTokens(source);
+    const program = lex(source);
     const result = Effect.runSync(program);
     return result.map(({ type, lexeme }) => ({ type, lexeme }));
   };
