@@ -1,5 +1,11 @@
 import { Effect } from "effect";
-import { ASTNode, AttributeNode, ElementNode, TextNode } from "./ast";
+import {
+  ASTNode,
+  AttributeNode,
+  ElementNode,
+  ExpressionNode,
+  TextNode,
+} from "./ast";
 
 export class TranspilerError {
   readonly _tag = "TranspilerError";
@@ -22,6 +28,8 @@ const transpileNode = (
       return transpileElement(node);
     case "Text":
       return transpileText(node);
+    case "Expression":
+      return transpileExpression(node);
     default:
       return Effect.succeed("");
   }
@@ -45,6 +53,12 @@ const transpileText = (
   node: TextNode
 ): Effect.Effect<string, TranspilerError> => {
   return Effect.succeed(`'${node.content}'`);
+};
+
+const transpileExpression = (
+  node: ExpressionNode
+): Effect.Effect<string, TranspilerError> => {
+  return Effect.succeed(node.content);
 };
 
 const transpileAttributes = (

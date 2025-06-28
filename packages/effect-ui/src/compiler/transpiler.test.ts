@@ -51,12 +51,12 @@ describe("transpiler", () => {
           {
             type: "Attribute",
             name: "class",
-            value: { type: "StringLiteral", value: "container" },
+            value: { type: "StringLiteral", value: "container", location },
           },
           {
             type: "Attribute",
             name: "id",
-            value: { type: "Expression", content: "myId" },
+            value: { type: "Expression", content: "myId", location },
           },
         ],
         children: [],
@@ -119,6 +119,29 @@ describe("transpiler", () => {
     ];
 
     const expectedJs = `h('div', {  }, [h('p', {  }, ['Nested'])])`;
+    const result = runTranspiler(ast);
+    const transpiled = expectSuccess(result);
+    expect(transpiled).toBe(expectedJs);
+  });
+
+  it("should transpile an element with an expression child", () => {
+    const ast: ElementNode[] = [
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [],
+        children: [
+          {
+            type: "Expression",
+            content: "message",
+            location,
+          },
+        ],
+        location,
+      },
+    ];
+
+    const expectedJs = `h('div', {  }, [message])`;
     const result = runTranspiler(ast);
     const transpiled = expectSuccess(result);
     expect(transpiled).toBe(expectedJs);
