@@ -65,9 +65,7 @@ const declaration = (
     if (peek(state).type === TokenType.LessThan) {
       if (peekNext(state).type === TokenType.Slash) {
         return yield* _(
-          Effect.fail(
-            new ParserError("Unexpected closing tag.", peekNext(state))
-          )
+          Effect.fail(new ParserError("Unexpected closing tag.", peek(state)))
         );
       }
       return yield* _(element(stateRef));
@@ -104,7 +102,9 @@ const element = (
       consume(stateRef, type, message);
 
     // Opening tag
-    yield* _(_consume(TokenType.LessThan, "Expected '<' to start an element."));
+    const openingToken = yield* _(
+      _consume(TokenType.LessThan, "Expected '<' to start an element.")
+    );
     const tagNameToken = yield* _(
       _consume(TokenType.Identifier, "Expected tag name.")
     );
@@ -191,7 +191,7 @@ const element = (
         if (isAtEnd(state)) {
           return yield* _(
             Effect.fail(
-              new ParserError(`Unclosed tag '${tagName}'.`, tagNameToken)
+              new ParserError(`Unclosed tag '${tagName}'.`, openingToken)
             )
           );
         }
