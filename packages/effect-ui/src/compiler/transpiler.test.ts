@@ -1,11 +1,28 @@
+import { Effect, Either } from "effect";
 import { describe, expect, it } from "vitest";
 import type { ElementNode } from "./ast";
-import { transpile } from "./transpiler";
+import { TranspilerError, transpile } from "./transpiler";
 
 describe("transpiler", () => {
   const location = {
     start: { line: 1, column: 1 },
     end: { line: 1, column: 2 },
+  };
+
+  const runTranspiler = (
+    ast: ElementNode[]
+  ): Either.Either<string, TranspilerError> => {
+    return Effect.runSync(Effect.either(transpile(ast)));
+  };
+
+  const expectSuccess = (
+    result: Either.Either<string, TranspilerError>
+  ): string => {
+    if (Either.isLeft(result)) {
+      console.error("Test failed with error:", result.left);
+      expect.fail("Expected transpiling to succeed, but it failed.");
+    }
+    return result.right;
   };
 
   it("should transpile a simple div element", () => {
@@ -20,7 +37,9 @@ describe("transpiler", () => {
     ];
 
     const expectedJs = "h('div', {  }, [])";
-    expect(transpile(ast)).toBe(expectedJs);
+    const result = runTranspiler(ast);
+    const transpiled = expectSuccess(result);
+    expect(transpiled).toBe(expectedJs);
   });
 
   it("should transpile an element with attributes", () => {
@@ -46,7 +65,9 @@ describe("transpiler", () => {
     ];
 
     const expectedJs = "h('div', { 'class': 'container', 'id': myId }, [])";
-    expect(transpile(ast)).toBe(expectedJs);
+    const result = runTranspiler(ast);
+    const transpiled = expectSuccess(result);
+    expect(transpiled).toBe(expectedJs);
   });
 
   it("should transpile an element with a text child", () => {
@@ -67,7 +88,9 @@ describe("transpiler", () => {
     ];
 
     const expectedJs = "h('div', {  }, ['Hello, World!'])";
-    expect(transpile(ast)).toBe(expectedJs);
+    const result = runTranspiler(ast);
+    const transpiled = expectSuccess(result);
+    expect(transpiled).toBe(expectedJs);
   });
 
   it("should transpile nested elements", () => {
@@ -96,6 +119,8 @@ describe("transpiler", () => {
     ];
 
     const expectedJs = `h('div', {  }, [h('p', {  }, ['Nested'])])`;
-    expect(transpile(ast)).toBe(expectedJs);
+    const result = runTranspiler(ast);
+    const transpiled = expectSuccess(result);
+    expect(transpiled).toBe(expectedJs);
   });
 });
