@@ -98,14 +98,16 @@ const scanToken = (
         return yield* _(_addToken(TokenType.Dot));
       }
 
-      // Ignore whitespace
+      // Whitespace
       case " ":
       case "\r":
       case "\t":
-        return;
-
-      case "\n":
-        return; // advance already handles line/col adjustment
+      case "\n": {
+        while (isWhitespace(yield* _(peek(stateRef)))) {
+          yield* _(advance(stateRef));
+        }
+        return yield* _(_addToken(TokenType.Whitespace));
+      }
 
       case '"':
       case "'":
@@ -228,4 +230,8 @@ const isAlpha = (char: string): boolean => {
 
 const isAlphaNumeric = (char: string): boolean => {
   return isAlpha(char) || (char >= "0" && char <= "9");
+};
+
+const isWhitespace = (char: string): boolean => {
+  return char === " " || char === "\t" || char === "\r" || char === "\n";
 };

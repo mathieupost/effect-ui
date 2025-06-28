@@ -11,6 +11,7 @@ export enum TokenType {
   Identifier = "Identifier",
   String = "String",
   Text = "Text",
+  Whitespace = "Whitespace",
 
   // Keywords / Multi-character
   Dot = "Dot", // .
