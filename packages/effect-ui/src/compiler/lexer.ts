@@ -242,7 +242,7 @@ const text = (stateRef: Ref.Ref<LexerState>): Effect.Effect<void, LexerError> =>
     const state = yield* _(Ref.get(stateRef));
     const content = state.source.substring(state.start, state.current);
     if (content.trim().length > 0) {
-      yield* _(addToken(stateRef)(TokenType.Identifier, content));
+      yield* _(addToken(stateRef)(TokenType.Text, content));
     }
   });
 

@@ -71,7 +71,7 @@ const declaration = (
       return yield* _(element(stateRef));
     }
 
-    if (peek(state).type === TokenType.Identifier) {
+    if (peek(state).type === TokenType.Text) {
       return yield* _(text(stateRef));
     }
 
@@ -90,7 +90,7 @@ const text = (
 ): Effect.Effect<TextNode, ParserError> =>
   Effect.gen(function* (_) {
     const token = yield* _(
-      consume(stateRef, TokenType.Identifier, "Expected text content.")
+      consume(stateRef, TokenType.Text, "Expected text content.")
     );
     // When the lexer identifies a text block, it stores the raw content
     // (including spaces) in the token's `literal` field. We prioritize
