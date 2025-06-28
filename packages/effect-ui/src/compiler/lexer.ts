@@ -41,7 +41,7 @@ export const scanTokens = (
 
     const loop: Effect.Effect<void, LexerError> = Effect.gen(function* (_) {
       const state = yield* _(Ref.get(stateRef));
-      if (state.current >= state.source.length) {
+      if (isAtEnd(state)) {
         return;
       }
 
@@ -103,9 +103,7 @@ const scanToken = (
       case "\r":
       case "\t":
       case "\n": {
-        while (isWhitespace(yield* _(peek(stateRef)))) {
-          yield* _(advance(stateRef));
-        }
+        yield* _(advanceWhile(stateRef, (state) => isWhitespace(peek(state))));
         return yield* _(_addToken(TokenType.Whitespace));
       }
 
@@ -140,20 +138,29 @@ const advance = (stateRef: Ref.Ref<LexerState>): Effect.Effect<string> =>
     return [char, newState];
   });
 
+const advanceWhile = (
+  stateRef: Ref.Ref<LexerState>,
+  condition: (state: LexerState) => boolean
+): Effect.Effect<void> =>
+  Effect.gen(function* (_) {
+    const state = yield* _(Ref.get(stateRef));
+    if (!condition(state)) {
+      return;
+    }
+    yield* _(advance(stateRef));
+    yield* _(advanceWhile(stateRef, condition));
+  });
+
 const match = (
   stateRef: Ref.Ref<LexerState>,
   expected: string
 ): Effect.Effect<boolean> =>
   Effect.gen(function* (_) {
     const state = yield* _(Ref.get(stateRef));
-    if (state.current >= state.source.length) {
+    if (isAtEnd(state) || state.source.charAt(state.current) !== expected) {
       return false;
     }
-    if (state.source.charAt(state.current) !== expected) {
-      return false;
-    }
-
-    yield* _(Ref.update(stateRef, (s) => ({ ...s, current: s.current + 1 })));
+    yield* _(advance(stateRef));
     return true;
   });
 
@@ -177,15 +184,15 @@ const string = (
   quoteType: '"' | "'"
 ): Effect.Effect<void, LexerError> =>
   Effect.gen(function* (_) {
-    while (
-      (yield* _(peek(stateRef))) !== quoteType &&
-      !(yield* _(isAtEnd(stateRef)))
-    ) {
-      yield* _(advance(stateRef));
-    }
+    yield* _(
+      advanceWhile(
+        stateRef,
+        (state) => peek(state) !== quoteType && !isAtEnd(state)
+      )
+    );
 
-    if (yield* _(isAtEnd(stateRef))) {
-      const state = yield* _(Ref.get(stateRef));
+    const state = yield* _(Ref.get(stateRef));
+    if (isAtEnd(state)) {
       return yield* _(
         Effect.fail(new UnexpectedCharacterError(state.line, state.col, "EOF"))
       );
@@ -195,8 +202,11 @@ const string = (
     yield* _(advance(stateRef));
 
     // Trim the surrounding quotes.
-    const state = yield* _(Ref.get(stateRef));
-    const value = state.source.substring(state.start + 1, state.current - 1);
+    const endState = yield* _(Ref.get(stateRef));
+    const value = endState.source.substring(
+      endState.start + 1,
+      endState.current - 1
+    );
     yield* _(addToken(stateRef)(TokenType.String, value));
   });
 
@@ -204,23 +214,17 @@ const identifier = (
   stateRef: Ref.Ref<LexerState>
 ): Effect.Effect<void, LexerError> =>
   Effect.gen(function* (_) {
-    while (isAlphaNumeric(yield* _(peek(stateRef)))) {
-      yield* _(advance(stateRef));
-    }
+    yield* _(advanceWhile(stateRef, (state) => isAlphaNumeric(peek(state))));
     yield* _(addToken(stateRef)(TokenType.Identifier));
   });
 
-const peek = (stateRef: Ref.Ref<LexerState>): Effect.Effect<string> =>
-  Effect.map(Ref.get(stateRef), (state) => {
-    if (state.current >= state.source.length) return "\0";
-    return state.source.charAt(state.current);
-  });
+const isAtEnd = (state: LexerState): boolean =>
+  state.current >= state.source.length;
 
-const isAtEnd = (stateRef: Ref.Ref<LexerState>): Effect.Effect<boolean> =>
-  Effect.map(
-    Ref.get(stateRef),
-    (state) => state.current >= state.source.length
-  );
+const peek = (state: LexerState): string => {
+  if (isAtEnd(state)) return "\0";
+  return state.source.charAt(state.current);
+};
 
 const isAlpha = (char: string): boolean => {
   return (
