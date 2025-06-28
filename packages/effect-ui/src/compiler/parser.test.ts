@@ -143,4 +143,56 @@ describe("parser", () => {
     expect((error as ParserError).line).toBe(1);
     expect((error as ParserError).col).toBe(6);
   });
+
+  it("should report an error for unclosed tags", () => {
+    const source = "<div>";
+    const result = runParser(source);
+    const error = expectFailure(result);
+
+    expect(error._tag).toBe("ParserError");
+    if (error._tag === "ParserError") {
+      expect(error.message).toContain("Unclosed tag 'div'.");
+      expect(error.line).toBe(1);
+      expect(error.col).toBe(1);
+    }
+  });
+
+  it("should report an error for unexpected closing tags", () => {
+    const source = "</div>";
+    const result = runParser(source);
+    const error = expectFailure(result);
+
+    expect(error._tag).toBe("ParserError");
+    if (error._tag === "ParserError") {
+      expect(error.message).toContain("Unexpected closing tag.");
+      expect(error.line).toBe(1);
+      expect(error.col).toBe(1);
+    }
+  });
+
+  it("should report an error for unclosed expressions", () => {
+    const source = "<div value={myValue";
+    const result = runParser(source);
+    const error = expectFailure(result);
+
+    expect(error._tag).toBe("ParserError");
+    if (error._tag === "ParserError") {
+      expect(error.message).toContain("Expected '}'. Got EOF instead.");
+      expect(error.line).toBe(1);
+      expect(error.col).toBe(20);
+    }
+  });
+
+  it("should report an error for missing closing >", () => {
+    const source = "<div></div";
+    const result = runParser(source);
+    const error = expectFailure(result);
+
+    expect(error._tag).toBe("ParserError");
+    if (error._tag === "ParserError") {
+      expect(error.message).toContain("Expected '>' after closing tag name.");
+      expect(error.line).toBe(1);
+      expect(error.col).toBe(11);
+    }
+  });
 });
