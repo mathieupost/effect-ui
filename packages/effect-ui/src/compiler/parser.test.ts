@@ -12,8 +12,8 @@ describe("parser", () => {
   };
 
   const expectSuccess = (
-    result: Either.Either<ASTNode[], LexerError | ParserError>
-  ): ASTNode[] => {
+    result: Either.Either<readonly ASTNode[], LexerError | ParserError>
+  ): readonly ASTNode[] => {
     if (Either.isLeft(result)) {
       console.error("Test failed with error:", result.left);
       expect.fail("Expected parsing to succeed, but it failed.");
@@ -22,7 +22,7 @@ describe("parser", () => {
   };
 
   const expectFailure = (
-    result: Either.Either<ASTNode[], LexerError | ParserError>
+    result: Either.Either<readonly ASTNode[], LexerError | ParserError>
   ): LexerError | ParserError => {
     if (Either.isRight(result)) {
       console.error("Test succeeded unexpectedly with result:", result.right);
@@ -39,6 +39,10 @@ describe("parser", () => {
         tagName: "div",
         attributes: [],
         children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 12 },
+        },
       },
     ];
     const result = runParser(source);
@@ -59,8 +63,16 @@ describe("parser", () => {
             tagName: "p",
             attributes: [],
             children: [],
+            location: {
+              start: { line: 1, column: 6 },
+              end: { line: 1, column: 13 },
+            },
           },
         ],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 19 },
+        },
       },
     ];
     const result = runParser(source);
@@ -85,6 +97,10 @@ describe("parser", () => {
           },
         ],
         children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 25 },
+        },
       },
     ];
     const result = runParser(source);
@@ -109,6 +125,10 @@ describe("parser", () => {
           },
         ],
         children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 28 },
+        },
       },
     ];
     const result = runParser(source);
@@ -123,7 +143,39 @@ describe("parser", () => {
         type: "Element",
         tagName: "div",
         attributes: [],
-        children: [{ type: "Text", content: "Hello" }],
+        children: [
+          {
+            type: "Text",
+            content: "Hello",
+            location: {
+              start: { line: 1, column: 6 },
+              end: { line: 1, column: 11 },
+            },
+          },
+        ],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 17 },
+        },
+      },
+    ];
+    const result = runParser(source);
+    const ast = expectSuccess(result);
+    expect(ast).toEqual(expected);
+  });
+
+  it("should parse self-closing tags", () => {
+    const source = "<div/>";
+    const expected = [
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [],
+        children: [],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 7 },
+        },
       },
     ];
     const result = runParser(source);
@@ -194,20 +246,5 @@ describe("parser", () => {
       expect(error.line).toBe(1);
       expect(error.col).toBe(11);
     }
-  });
-
-  it("should parse self-closing tags", () => {
-    const source = "<div/>";
-    const expected = [
-      {
-        type: "Element",
-        tagName: "div",
-        attributes: [],
-        children: [],
-      },
-    ];
-    const result = runParser(source);
-    const ast = expectSuccess(result);
-    expect(ast).toEqual(expected);
   });
 });

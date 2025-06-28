@@ -91,6 +91,10 @@ const text = (
     return {
       type: "Text",
       content: token.lexeme,
+      location: {
+        start: { line: token.line, column: token.col },
+        end: { line: token.line, column: token.col + token.lexeme.length },
+      },
     };
   });
 
@@ -178,7 +182,7 @@ const element = (
       yield* _(
         _consume(TokenType.Slash, "Expected '/>' for self-closing tag.")
       );
-      yield* _(
+      const endToken = yield* _(
         _consume(TokenType.GreaterThan, "Expected '>' after self-closing tag.")
       );
       return {
@@ -186,6 +190,10 @@ const element = (
         tagName: tagName,
         attributes: attributes as AttributeNode[],
         children: [],
+        location: {
+          start: { line: openingToken.line, column: openingToken.col },
+          end: { line: endToken.line, column: endToken.col + 1 },
+        },
       };
     }
 
@@ -241,7 +249,7 @@ const element = (
       })
     );
 
-    yield* _(
+    const endToken = yield* _(
       _consume(TokenType.GreaterThan, "Expected '>' after closing tag name.")
     );
 
@@ -250,6 +258,10 @@ const element = (
       tagName: tagName,
       attributes: attributes as AttributeNode[],
       children: children as ASTNode[],
+      location: {
+        start: { line: openingToken.line, column: openingToken.col },
+        end: { line: endToken.line, column: endToken.col + 1 },
+      },
     };
   });
 
