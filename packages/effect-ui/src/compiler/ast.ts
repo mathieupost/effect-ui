@@ -1,11 +1,17 @@
+export type Location = {
+  start: { line: number; column: number };
+  end: { line: number; column: number };
+};
+
 export type ASTNode = ElementNode | TextNode; // | CommentNode etc.
 
-export interface ElementNode {
-  readonly type: "Element";
-  readonly tagName: string;
-  readonly attributes: readonly AttributeNode[];
-  readonly children: readonly ASTNode[];
-}
+export type ElementNode = {
+  type: "Element";
+  tagName: string;
+  attributes: readonly AttributeNode[];
+  children: readonly ASTNode[];
+  location: Location;
+};
 
 export interface AttributeNode {
   readonly type: "Attribute";
@@ -18,10 +24,11 @@ export interface StringLiteral {
   readonly value: string;
 }
 
-export interface TextNode {
-  readonly type: "Text";
-  readonly content: string;
-}
+export type TextNode = {
+  type: "Text";
+  content: string;
+  location: Location;
+};
 
 export interface ExpressionNode {
   readonly type: "Expression";
