@@ -173,6 +173,22 @@ const element = (
 
     const attributes = yield* _(attributesLoop([]));
 
+    const state = yield* _(Ref.get(stateRef));
+    if (peek(state).type === TokenType.Slash) {
+      yield* _(
+        _consume(TokenType.Slash, "Expected '/>' for self-closing tag.")
+      );
+      yield* _(
+        _consume(TokenType.GreaterThan, "Expected '>' after self-closing tag.")
+      );
+      return {
+        type: "Element",
+        tagName: tagName,
+        attributes: attributes as AttributeNode[],
+        children: [],
+      };
+    }
+
     yield* _(_consume(TokenType.GreaterThan, "Expected '>' after tag name."));
 
     const childrenLoop: (

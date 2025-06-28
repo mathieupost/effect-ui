@@ -195,4 +195,19 @@ describe("parser", () => {
       expect(error.col).toBe(11);
     }
   });
+
+  it("should parse self-closing tags", () => {
+    const source = "<div/>";
+    const expected = [
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [],
+        children: [],
+      },
+    ];
+    const result = runParser(source);
+    const ast = expectSuccess(result);
+    expect(ast).toEqual(expected);
+  });
 });
