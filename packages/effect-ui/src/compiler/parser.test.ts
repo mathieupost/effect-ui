@@ -99,4 +99,22 @@ describe("parser", () => {
       },
     ]);
   });
+
+  it("should parse text nodes within an element", () => {
+    const source = "<div>Hello</div>";
+    const program = Effect.flatMap(lex(source), (tokens) => parse(tokens));
+    const result = Effect.runSync(Effect.either(program));
+
+    expect(Either.isRight(result)).toBe(true);
+    const ast = (result as Either.Right<any, ASTNode[]>).right;
+
+    expect(ast).toEqual([
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [],
+        children: [{ type: "Text", content: "Hello" }],
+      },
+    ]);
+  });
 });

@@ -1,5 +1,5 @@
 import { Effect, Ref } from "effect";
-import { ASTNode, AttributeNode } from "./ast";
+import { ASTNode, AttributeNode, TextNode } from "./ast";
 import { Token, TokenType } from "./token";
 
 // --- Error Types ---
@@ -67,10 +67,27 @@ const declaration = (
       return yield* _(element(stateRef));
     }
 
-    // Other top-level nodes like text, comments, etc. will go here
+    if (peek(state).type === TokenType.Identifier) {
+      return yield* _(text(stateRef));
+    }
+
+    // Other top-level nodes like comments, etc. will go here
     // For now, we'll just advance past other tokens
     yield* _(advance(stateRef));
     return null; // Temporary
+  });
+
+const text = (
+  stateRef: Ref.Ref<ParserState>
+): Effect.Effect<TextNode, ParserError> =>
+  Effect.gen(function* (_) {
+    const token = yield* _(
+      consume(stateRef, TokenType.Identifier, "Expected text content.")
+    );
+    return {
+      type: "Text",
+      content: token.lexeme,
+    };
   });
 
 const element = (

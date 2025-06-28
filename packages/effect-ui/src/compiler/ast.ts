@@ -1,4 +1,4 @@
-export type ASTNode = ElementNode; // | TextNode | CommentNode etc.
+export type ASTNode = ElementNode | TextNode; // | CommentNode etc.
 
 export interface ElementNode {
   readonly type: "Element";
