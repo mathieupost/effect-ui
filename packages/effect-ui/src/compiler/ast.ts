@@ -3,7 +3,7 @@ export type Location = {
   end: { line: number; column: number };
 };
 
-export type ASTNode = ElementNode | TextNode; // | CommentNode etc.
+export type ASTNode = ElementNode | TextNode | ExpressionNode; // | CommentNode etc.
 
 export type ElementNode = {
   type: "Element";
@@ -22,6 +22,7 @@ export interface AttributeNode {
 export interface StringLiteral {
   readonly type: "StringLiteral";
   readonly value: string;
+  readonly location: Location;
 }
 
 export type TextNode = {
@@ -33,4 +34,5 @@ export type TextNode = {
 export interface ExpressionNode {
   readonly type: "Expression";
   readonly content: string;
+  readonly location: Location;
 }

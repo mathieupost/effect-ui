@@ -75,6 +75,10 @@ const declaration = (
       return yield* _(text(stateRef));
     }
 
+    if (peek(state).type === TokenType.OpenBrace) {
+      return yield* _(expression(stateRef));
+    }
+
     // Other top-level nodes like comments, etc. will go here
     // For now, we'll just advance past other tokens
     yield* _(advance(stateRef));
@@ -94,6 +98,30 @@ const text = (
       location: {
         start: { line: token.line, column: token.col },
         end: { line: token.line, column: token.col + token.lexeme.length },
+      },
+    };
+  });
+
+const expression = (
+  stateRef: Ref.Ref<ParserState>
+): Effect.Effect<ASTNode, ParserError> =>
+  Effect.gen(function* (_) {
+    const openBrace = yield* _(
+      consume(stateRef, TokenType.OpenBrace, "Expected '{'.")
+    );
+    const expressionToken = yield* _(
+      consume(stateRef, TokenType.Identifier, "Expected expression.")
+    );
+    const closeBrace = yield* _(
+      consume(stateRef, TokenType.CloseBrace, "Expected '}'.")
+    );
+
+    return {
+      type: "Expression",
+      content: expressionToken.lexeme,
+      location: {
+        start: { line: openBrace.line, column: openBrace.col },
+        end: { line: closeBrace.line, column: closeBrace.col + 1 },
       },
     };
   });
@@ -143,16 +171,31 @@ const element = (
           attributeValue = {
             type: "StringLiteral",
             value: valueToken.literal as string,
+            location: {
+              start: { line: valueToken.line, column: valueToken.col },
+              end: {
+                line: valueToken.line,
+                column: valueToken.col + valueToken.lexeme.length,
+              },
+            },
           };
         } else if (peek(stateAfterEquals).type === TokenType.OpenBrace) {
-          yield* _(_consume(TokenType.OpenBrace, "Expected '{'."));
+          const openBrace = yield* _(
+            _consume(TokenType.OpenBrace, "Expected '{'.")
+          );
           const expressionToken = yield* _(
             _consume(TokenType.Identifier, "Expected expression.")
           );
-          yield* _(_consume(TokenType.CloseBrace, "Expected '}'."));
+          const closeBrace = yield* _(
+            _consume(TokenType.CloseBrace, "Expected '}'.")
+          );
           attributeValue = {
             type: "Expression",
             content: expressionToken.lexeme,
+            location: {
+              start: { line: openBrace.line, column: openBrace.col },
+              end: { line: closeBrace.line, column: closeBrace.col + 1 },
+            },
           };
         } else {
           return yield* _(

@@ -93,6 +93,10 @@ describe("parser", () => {
             value: {
               type: "StringLiteral",
               value: "main",
+              location: {
+                start: { line: 1, column: 12 },
+                end: { line: 1, column: 18 },
+              },
             },
           },
         ],
@@ -121,6 +125,10 @@ describe("parser", () => {
             value: {
               type: "Expression",
               content: "myValue",
+              location: {
+                start: { line: 1, column: 12 },
+                end: { line: 1, column: 21 },
+              },
             },
           },
         ],
@@ -175,6 +183,34 @@ describe("parser", () => {
         location: {
           start: { line: 1, column: 1 },
           end: { line: 1, column: 7 },
+        },
+      },
+    ];
+    const result = runParser(source);
+    const ast = expectSuccess(result);
+    expect(ast).toEqual(expected);
+  });
+
+  it("should parse an element with an expression child", () => {
+    const source = "<div>{message}</div>";
+    const expected = [
+      {
+        type: "Element",
+        tagName: "div",
+        attributes: [],
+        children: [
+          {
+            type: "Expression",
+            content: "message",
+            location: {
+              start: { line: 1, column: 6 },
+              end: { line: 1, column: 15 },
+            },
+          },
+        ],
+        location: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 21 },
         },
       },
     ];
