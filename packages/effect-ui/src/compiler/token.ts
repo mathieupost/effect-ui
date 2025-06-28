@@ -24,7 +24,7 @@ export enum TokenType {
 export interface Token {
   type: TokenType;
   lexeme: string;
-  literal: any;
+  literal?: string;
   line: number;
   col: number;
 }

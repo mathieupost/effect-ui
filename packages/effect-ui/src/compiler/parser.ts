@@ -28,7 +28,7 @@ const makeParserState = (tokens: readonly Token[]): ParserState => ({
 // --- Main Public API ---
 export const parse = (
   tokens: readonly Token[]
-): Effect.Effect<ASTNode[], ParserError> =>
+): Effect.Effect<readonly ASTNode[], ParserError> =>
   Effect.gen(function* (_) {
     // We don't care about whitespace during parsing
     const stateRef = yield* _(
@@ -52,7 +52,7 @@ export const parse = (
       });
 
     const allNodes = yield* _(loop([]));
-    return allNodes as ASTNode[];
+    return allNodes;
   });
 
 // --- Recursive Descent Helpers ---
@@ -96,7 +96,7 @@ const text = (
     // (including spaces) in the token's `literal` field. We prioritize
     // this literal value to correctly create the TextNode, falling back to
     // the lexeme for other cases.
-    const content = (token.literal as string) ?? token.lexeme;
+    const content = token.literal ?? token.lexeme;
     return {
       type: "Text",
       content: content,
@@ -175,7 +175,7 @@ const element = (
           );
           attributeValue = {
             type: "StringLiteral",
-            value: valueToken.literal as string,
+            value: valueToken.literal ?? valueToken.lexeme,
             location: {
               start: { line: valueToken.line, column: valueToken.col },
               end: {
@@ -236,7 +236,7 @@ const element = (
       return {
         type: "Element",
         tagName: tagName,
-        attributes: attributes as AttributeNode[],
+        attributes: attributes,
         children: [],
         location: {
           start: { line: openingToken.line, column: openingToken.col },
@@ -304,8 +304,8 @@ const element = (
     return {
       type: "Element",
       tagName: tagName,
-      attributes: attributes as AttributeNode[],
-      children: children as ASTNode[],
+      attributes: attributes,
+      children: children,
       location: {
         start: { line: openingToken.line, column: openingToken.col },
         end: { line: endToken.line, column: endToken.col + 1 },

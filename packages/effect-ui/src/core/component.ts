@@ -15,5 +15,5 @@ export const createElement = <P, E, R>(
   props: P,
   ...children: Effect.Effect<Element, any, any>[]
 ): Effect.Effect<Element, E, R> => {
-  return component({ ...(props as any), children });
+  return component({ ...props, children });
 };

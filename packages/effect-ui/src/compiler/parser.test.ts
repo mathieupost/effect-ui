@@ -4,7 +4,7 @@ import { ASTNode } from "./ast";
 import { LexerError, lex } from "./lexer";
 import { ParserError, parse } from "./parser";
 
-describe("parser", () => {
+describe("Parser", () => {
   const runParser = (source: string) => {
     const program = Effect.flatMap(lex(source), (tokens) => parse(tokens));
     const result = Effect.runSync(Effect.either(program));
@@ -224,12 +224,14 @@ describe("parser", () => {
     const result = runParser(source);
     const error = expectFailure(result);
 
-    expect(error._tag).toBe("ParserError");
-    expect((error as ParserError).message).toContain(
-      "Mismatched closing tag. Expected 'div' but got 'p'"
-    );
-    expect((error as ParserError).line).toBe(1);
-    expect((error as ParserError).col).toBe(6);
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
+      expect(error.message).toContain(
+        "Mismatched closing tag. Expected 'div' but got 'p'"
+      );
+      expect(error.line).toBe(1);
+      expect(error.col).toBe(6);
+    }
   });
 
   it("should report an error for unclosed tags", () => {
@@ -237,8 +239,8 @@ describe("parser", () => {
     const result = runParser(source);
     const error = expectFailure(result);
 
-    expect(error._tag).toBe("ParserError");
-    if (error._tag === "ParserError") {
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
       expect(error.message).toContain("Unclosed tag 'div'.");
       expect(error.line).toBe(1);
       expect(error.col).toBe(1);
@@ -250,8 +252,8 @@ describe("parser", () => {
     const result = runParser(source);
     const error = expectFailure(result);
 
-    expect(error._tag).toBe("ParserError");
-    if (error._tag === "ParserError") {
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
       expect(error.message).toContain("Unexpected closing tag.");
       expect(error.line).toBe(1);
       expect(error.col).toBe(1);
@@ -263,8 +265,8 @@ describe("parser", () => {
     const result = runParser(source);
     const error = expectFailure(result);
 
-    expect(error._tag).toBe("ParserError");
-    if (error._tag === "ParserError") {
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
       expect(error.message).toContain("Expected '}'. Got EOF instead.");
       expect(error.line).toBe(1);
       expect(error.col).toBe(20);
@@ -276,8 +278,8 @@ describe("parser", () => {
     const result = runParser(source);
     const error = expectFailure(result);
 
-    expect(error._tag).toBe("ParserError");
-    if (error._tag === "ParserError") {
+    expect(error).toBeInstanceOf(ParserError);
+    if (error instanceof ParserError) {
       expect(error.message).toContain("Expected '>' after closing tag name.");
       expect(error.line).toBe(1);
       expect(error.col).toBe(11);
