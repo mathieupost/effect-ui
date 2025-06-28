@@ -1,23 +1,23 @@
 export enum TokenType {
   // Single-character tokens
-  LessThan, // <
-  GreaterThan, // >
-  Slash, // /
-  Equals, // =
-  OpenBrace, // {
-  CloseBrace, // }
+  LessThan = "LessThan", // <
+  GreaterThan = "GreaterThan", // >
+  Slash = "Slash", // /
+  Equals = "Equals", // =
+  OpenBrace = "OpenBrace", // {
+  CloseBrace = "CloseBrace", // }
 
   // Literals
-  Identifier,
-  String,
-  Text,
+  Identifier = "Identifier",
+  String = "String",
+  Text = "Text",
 
   // Keywords / Multi-character
-  Dot, // .
-  Spread, // ...
+  Dot = "Dot", // .
+  Spread = "Spread", // ...
 
   // End of file
-  EOF,
+  EOF = "EOF",
 }
 
 export interface Token {
