@@ -21,6 +21,7 @@ interface LexerState {
   readonly current: number;
   readonly line: number;
   readonly col: number;
+  readonly mode: "tag" | "content";
 }
 
 const makeLexerState = (source: string): LexerState => ({
@@ -30,6 +31,7 @@ const makeLexerState = (source: string): LexerState => ({
   current: 0,
   line: 1,
   col: 1,
+  mode: "content",
 });
 
 // --- Main Public API ---
@@ -56,7 +58,6 @@ export const lex = (
     const eofToken: Token = {
       type: TokenType.EOF,
       lexeme: "",
-      literal: null,
       line: finalState.line,
       col: finalState.col,
     };
@@ -70,15 +71,52 @@ const scanToken = (
   stateRef: Ref.Ref<LexerState>
 ): Effect.Effect<void, LexerError> =>
   Effect.gen(function* (_) {
-    const char = yield* _(advance(stateRef));
+    const state = yield* _(Ref.get(stateRef));
 
+    if (state.mode === "content") {
+      // If we are at a delimiter, switch back to tag mode and let the next
+      // pass handle the delimiter token. Don't consume anything.
+      const peeked = peek(state);
+      if (isAtEnd(state) || peeked === "<" || peeked === "{") {
+        yield* _(Ref.update(stateRef, (s) => ({ ...s, mode: "tag" as const })));
+        return;
+      }
+
+      // We have text content. Consume characters until we hit the next delimiter.
+      yield* _(
+        advanceWhile(
+          stateRef,
+          (s) => !isAtEnd(s) && peek(s) !== "<" && peek(s) !== "{"
+        )
+      );
+
+      // Create a single token for the entire text block.
+      const afterState = yield* _(Ref.get(stateRef));
+      const textContent = afterState.source.substring(
+        afterState.start,
+        afterState.current
+      );
+
+      if (textContent.length > 0) {
+        return yield* _(addToken(stateRef)(TokenType.Text, textContent));
+      }
+      return;
+    }
+
+    // --- Tag Mode ---
+    const char = yield* _(advance(stateRef));
     const _addToken = addToken(stateRef);
 
     switch (char) {
       case "<":
         return yield* _(_addToken(TokenType.LessThan));
-      case ">":
+      case ">": {
+        // After a '>', we switch to content mode to handle text nodes.
+        yield* _(
+          Ref.update(stateRef, (s) => ({ ...s, mode: "content" as const }))
+        );
         return yield* _(_addToken(TokenType.GreaterThan));
+      }
       case "/":
         return yield* _(_addToken(TokenType.Slash));
       case "=":
@@ -98,7 +136,11 @@ const scanToken = (
         return yield* _(_addToken(TokenType.Dot));
       }
 
-      // Whitespace
+      case '"':
+      case "'":
+        return yield* _(string(stateRef, char));
+
+      // Whitespace is only tokenized in tag mode.
       case " ":
       case "\r":
       case "\t":
@@ -107,32 +149,20 @@ const scanToken = (
         return yield* _(_addToken(TokenType.Whitespace));
       }
 
-      case '"':
-        return yield* _(string(stateRef, char));
-
-      case "'":
-        return yield* _(string(stateRef, char));
-
       default: {
-        // HACK: This is a simple way to detect if we are inside an element's
-        // content. If the previously processed character was a '>', we assume
-        // we are now parsing raw text content until we hit a new tag '<' or
-        // an expression '{'.
-        const stateBefore = yield* _(Ref.get(stateRef));
-        if (
-          stateBefore.current > 0 &&
-          stateBefore.source[stateBefore.current - 2] === ">"
-        ) {
-          return yield* _(text(stateRef));
-        }
-
         if (isAlpha(char)) {
           return yield* _(identifier(stateRef));
         }
 
-        const state = yield* _(Ref.get(stateRef));
+        const currentState = yield* _(Ref.get(stateRef));
         return yield* _(
-          Effect.fail(new UnexpectedCharacterError(state.line, state.col, char))
+          Effect.fail(
+            new UnexpectedCharacterError(
+              currentState.line,
+              currentState.col,
+              char
+            )
+          )
         );
       }
     }
@@ -180,7 +210,7 @@ const match = (
 
 const addToken =
   (stateRef: Ref.Ref<LexerState>) =>
-  (type: TokenType, literal: any = null): Effect.Effect<void> =>
+  (type: TokenType, literal?: string): Effect.Effect<void> =>
     Ref.update(stateRef, (state) => {
       const lexeme = state.source.substring(state.start, state.current);
       const token: Token = {
@@ -222,28 +252,6 @@ const string = (
       endState.current - 1
     );
     yield* _(addToken(stateRef)(TokenType.String, value));
-  });
-
-/**
- * Scans a block of text content inside an element.
- * It consumes characters until it encounters a '<' (start of a new tag)
- * or a '{' (start of an expression). This allows us to capture text nodes
- * that contain spaces, which would otherwise be treated as separate whitespace tokens.
- * The captured text is stored in the token's `literal` field.
- */
-const text = (stateRef: Ref.Ref<LexerState>): Effect.Effect<void, LexerError> =>
-  Effect.gen(function* (_) {
-    yield* _(
-      advanceWhile(
-        stateRef,
-        (state) => peek(state) !== "<" && peek(state) !== "{" && !isAtEnd(state)
-      )
-    );
-    const state = yield* _(Ref.get(stateRef));
-    const content = state.source.substring(state.start, state.current);
-    if (content.trim().length > 0) {
-      yield* _(addToken(stateRef)(TokenType.Text, content));
-    }
   });
 
 const identifier = (

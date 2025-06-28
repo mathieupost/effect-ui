@@ -7,29 +7,34 @@ describe("Lexer", () => {
   const runLexer = (source: string) => {
     const program = lex(source);
     const result = Effect.runSync(program);
-    return result.map(({ type, lexeme }) => ({ type, lexeme }));
+    return result.map(({ type, lexeme, literal }) => ({
+      type,
+      lexeme,
+      literal,
+    }));
   };
 
   it("should tokenize single-character tokens", () => {
-    const source = "<>/={}";
+    const source = "</={}>";
     const expected = [
       { type: TokenType.LessThan, lexeme: "<" },
-      { type: TokenType.GreaterThan, lexeme: ">" },
       { type: TokenType.Slash, lexeme: "/" },
       { type: TokenType.Equals, lexeme: "=" },
       { type: TokenType.OpenBrace, lexeme: "{" },
       { type: TokenType.CloseBrace, lexeme: "}" },
+      { type: TokenType.GreaterThan, lexeme: ">" },
       { type: TokenType.EOF, lexeme: "" },
     ];
     expect(runLexer(source)).toEqual(expected);
   });
 
   it("should tokenize identifiers, whitespace, and strings", () => {
-    const source = `div "hello"`;
+    const source = `<div "hello"`;
     const expected = [
+      { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Identifier, lexeme: "div" },
       { type: TokenType.Whitespace, lexeme: " " },
-      { type: TokenType.String, lexeme: `"hello"` },
+      { type: TokenType.String, lexeme: `"hello"`, literal: "hello" },
       { type: TokenType.EOF, lexeme: "" },
     ];
     expect(runLexer(source)).toEqual(expected);
@@ -41,11 +46,11 @@ describe("Lexer", () => {
       { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Identifier, lexeme: "div" },
       { type: TokenType.GreaterThan, lexeme: ">" },
-      { type: TokenType.Whitespace, lexeme: " " },
-      { type: TokenType.Identifier, lexeme: "Hello" },
-      { type: TokenType.Whitespace, lexeme: "   " },
-      { type: TokenType.Identifier, lexeme: "World" },
-      { type: TokenType.Whitespace, lexeme: " " },
+      {
+        type: TokenType.Text,
+        lexeme: " Hello   World ",
+        literal: " Hello   World ",
+      },
       { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Slash, lexeme: "/" },
       { type: TokenType.Identifier, lexeme: "div" },
@@ -75,7 +80,7 @@ describe("Lexer", () => {
       { type: TokenType.Whitespace, lexeme: " " },
       { type: TokenType.Identifier, lexeme: "class" },
       { type: TokenType.Equals, lexeme: "=" },
-      { type: TokenType.String, lexeme: `"container"` },
+      { type: TokenType.String, lexeme: `"container"`, literal: "container" },
       { type: TokenType.GreaterThan, lexeme: ">" },
       { type: TokenType.EOF, lexeme: "" },
     ];
@@ -123,9 +128,9 @@ describe("Lexer", () => {
       { type: TokenType.Whitespace, lexeme: " " },
       { type: TokenType.Identifier, lexeme: "data-logic" },
       { type: TokenType.Equals, lexeme: "=" },
-      { type: TokenType.String, lexeme: `"if(x > 5)"` },
+      { type: TokenType.String, lexeme: `"if(x > 5)"`, literal: "if(x > 5)" },
       { type: TokenType.GreaterThan, lexeme: ">" },
-      { type: TokenType.Text, lexeme: "Content" },
+      { type: TokenType.Text, lexeme: "Content", literal: "Content" },
       { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Slash, lexeme: "/" },
       { type: TokenType.Identifier, lexeme: "div" },
@@ -141,7 +146,7 @@ describe("Lexer", () => {
       { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Identifier, lexeme: "div" },
       { type: TokenType.GreaterThan, lexeme: ">" },
-      { type: TokenType.Text, lexeme: "Is 5 > 3?" },
+      { type: TokenType.Text, lexeme: "Is 5 > 3?", literal: "Is 5 > 3?" },
       { type: TokenType.LessThan, lexeme: "<" },
       { type: TokenType.Slash, lexeme: "/" },
       { type: TokenType.Identifier, lexeme: "div" },
