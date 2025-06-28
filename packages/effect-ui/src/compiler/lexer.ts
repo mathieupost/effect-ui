@@ -1,115 +1,163 @@
+import { Effect, Ref } from "effect";
 import { Token, TokenType } from "./token";
 
-export class Lexer {
-  private readonly source: string;
-  private tokens: Token[] = [];
+// --- Error Types ---
+export class UnexpectedCharacterError {
+  readonly _tag = "UnexpectedCharacterError";
+  constructor(
+    readonly line: number,
+    readonly col: number,
+    readonly char: string
+  ) {}
+}
 
-  private start = 0;
-  private current = 0;
-  private line = 1;
-  private col = 1;
+export type LexerError = UnexpectedCharacterError;
 
-  constructor(source: string) {
-    this.source = source;
-  }
+// --- Lexer State ---
+interface LexerState {
+  readonly source: string;
+  readonly tokens: readonly Token[];
+  readonly start: number;
+  readonly current: number;
+  readonly line: number;
+  readonly col: number;
+}
 
-  scanTokens(): Token[] {
-    while (!this.isAtEnd()) {
-      this.start = this.current;
-      this.scanToken();
-    }
+const makeLexerState = (source: string): LexerState => ({
+  source,
+  tokens: [],
+  start: 0,
+  current: 0,
+  line: 1,
+  col: 1,
+});
 
-    this.tokens.push({
+// --- Main Public API ---
+export const scanTokens = (
+  source: string
+): Effect.Effect<readonly Token[], LexerError> =>
+  Effect.gen(function* (_) {
+    const stateRef = yield* _(Ref.make(makeLexerState(source)));
+
+    const loop: Effect.Effect<void, LexerError> = Effect.gen(function* (_) {
+      const state = yield* _(Ref.get(stateRef));
+      if (state.current >= state.source.length) {
+        return;
+      }
+
+      yield* _(Ref.update(stateRef, (s) => ({ ...s, start: s.current })));
+      yield* _(scanToken(stateRef));
+      yield* _(loop);
+    });
+
+    yield* _(loop);
+
+    const finalState = yield* _(Ref.get(stateRef));
+    const eofToken: Token = {
       type: TokenType.EOF,
       lexeme: "",
       literal: null,
-      line: this.line,
-      col: this.col,
-    });
-    return this.tokens;
-  }
+      line: finalState.line,
+      col: finalState.col,
+    };
 
-  private isAtEnd(): boolean {
-    return this.current >= this.source.length;
-  }
+    return [...finalState.tokens, eofToken] as const;
+  });
 
-  private scanToken(): void {
-    // This is where the magic will happen.
-    // We'll implement this in the next steps.
-    const char = this.advance();
+// --- Private Helpers ---
+
+const scanToken = (
+  stateRef: Ref.Ref<LexerState>
+): Effect.Effect<void, LexerError> =>
+  Effect.gen(function* (_) {
+    const char = yield* _(advance(stateRef));
+
+    const _addToken = addToken(stateRef);
 
     switch (char) {
       case "<":
-        this.addToken(TokenType.LessThan);
-        break;
+        return yield* _(_addToken(TokenType.LessThan));
       case ">":
-        this.addToken(TokenType.GreaterThan);
-        break;
-
+        return yield* _(_addToken(TokenType.GreaterThan));
       case "/":
-        this.addToken(TokenType.Slash);
-        break;
+        return yield* _(_addToken(TokenType.Slash));
       case "=":
-        this.addToken(TokenType.Equals);
-        break;
+        return yield* _(_addToken(TokenType.Equals));
       case "{":
-        this.addToken(TokenType.OpenBrace);
-        break;
+        return yield* _(_addToken(TokenType.OpenBrace));
       case "}":
-        this.addToken(TokenType.CloseBrace);
-        break;
-      case ".":
-        if (this.match(".") && this.match(".")) {
-          this.addToken(TokenType.Spread);
-        } else {
-          this.addToken(TokenType.Dot);
+        return yield* _(_addToken(TokenType.CloseBrace));
+      case ".": {
+        const isSpread = yield* _(match(stateRef, "."));
+        if (isSpread) {
+          const isReallySpread = yield* _(match(stateRef, "."));
+          if (isReallySpread) {
+            return yield* _(_addToken(TokenType.Spread));
+          }
         }
-        break;
+        return yield* _(_addToken(TokenType.Dot));
+      }
 
       // Ignore whitespace
       case " ":
       case "\r":
       case "\t":
-        break;
+        return;
 
       case "\n":
-        this.line++;
-        this.col = 1;
-        break;
+        return; // advance already handles line/col adjustment
 
-      default:
-        // For now, we'll just log an error for unrecognized characters.
-        // We will handle text nodes, identifiers, and strings later.
-        console.error(
-          `[Line ${this.line}] Error: Unexpected character: ${char}`
+      default: {
+        const state = yield* _(Ref.get(stateRef));
+        return yield* _(
+          Effect.fail(new UnexpectedCharacterError(state.line, state.col, char))
         );
-        break;
+      }
     }
-  }
+  });
 
-  private advance(): string {
-    this.current++;
-    this.col++;
-    return this.source.charAt(this.current - 1);
-  }
+const advance = (stateRef: Ref.Ref<LexerState>): Effect.Effect<string> =>
+  Ref.modify(stateRef, (state) => {
+    const char = state.source.charAt(state.current);
+    const newCol = char === "\n" ? 1 : state.col + 1;
+    const newLine = char === "\n" ? state.line + 1 : state.line;
+    const newState: LexerState = {
+      ...state,
+      current: state.current + 1,
+      line: newLine,
+      col: newCol,
+    };
+    return [char, newState];
+  });
 
-  private match(expected: string): boolean {
-    if (this.isAtEnd()) return false;
-    if (this.source.charAt(this.current) !== expected) return false;
+const match = (
+  stateRef: Ref.Ref<LexerState>,
+  expected: string
+): Effect.Effect<boolean> =>
+  Effect.gen(function* (_) {
+    const state = yield* _(Ref.get(stateRef));
+    if (state.current >= state.source.length) {
+      return false;
+    }
+    if (state.source.charAt(state.current) !== expected) {
+      return false;
+    }
 
-    this.current++;
-    this.col++;
+    yield* _(Ref.update(stateRef, (s) => ({ ...s, current: s.current + 1 })));
     return true;
-  }
+  });
 
-  private addToken(type: TokenType, literal: any = null): void {
-    const text = this.source.substring(this.start, this.current);
-    this.tokens.push({
-      type,
-      lexeme: text,
-      literal,
-      line: this.line,
-      col: this.col - text.length + 1, // beginning of the token
+const addToken =
+  (stateRef: Ref.Ref<LexerState>) =>
+  (type: TokenType, literal: any = null): Effect.Effect<void> =>
+    Ref.update(stateRef, (state) => {
+      const lexeme = state.source.substring(state.start, state.current);
+      const token: Token = {
+        type,
+        lexeme,
+        literal,
+        line: state.line,
+        col: state.col - lexeme.length + 1,
+      };
+      return { ...state, tokens: [...state.tokens, token] };
     });
-  }
-}
