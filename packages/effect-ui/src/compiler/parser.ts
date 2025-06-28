@@ -5,7 +5,13 @@ import { Token, TokenType } from "./token";
 // --- Error Types ---
 export class ParserError {
   readonly _tag = "ParserError";
-  constructor(readonly message: string, readonly token?: Token) {}
+  readonly line: number;
+  readonly col: number;
+
+  constructor(readonly message: string, readonly token?: Token) {
+    this.line = token?.line ?? -1;
+    this.col = token?.col ?? -1;
+  }
 }
 
 // --- Parser State ---
@@ -198,7 +204,7 @@ const element = (
     const children = yield* _(childrenLoop([]));
 
     // Closing tag
-    yield* _(
+    const lessThanToken = yield* _(
       _consume(TokenType.LessThan, `Expected closing tag for '${tagName}'.`)
     );
     yield* _(_consume(TokenType.Slash, "Expected '/' for closing tag."));
@@ -206,16 +212,18 @@ const element = (
       _consume(TokenType.Identifier, `Expected closing tag name '${tagName}'.`)
     );
 
-    if (tagName !== closingTagToken.lexeme) {
-      return yield* _(
-        Effect.fail(
-          new ParserError(
-            `Mismatched closing tag. Expected '${tagName}' but got '${closingTagToken.lexeme}'.`,
-            closingTagToken
-          )
-        )
-      );
-    }
+    yield* _(
+      Effect.if(tagName === closingTagToken.lexeme, {
+        onTrue: () => Effect.void,
+        onFalse: () =>
+          Effect.fail(
+            new ParserError(
+              `Mismatched closing tag. Expected '${tagName}' but got '${closingTagToken.lexeme}'.`,
+              lessThanToken
+            )
+          ),
+      })
+    );
 
     yield* _(
       _consume(TokenType.GreaterThan, "Expected '>' after closing tag name.")

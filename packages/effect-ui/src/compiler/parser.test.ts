@@ -130,4 +130,17 @@ describe("parser", () => {
     const ast = expectSuccess(result);
     expect(ast).toEqual(expected);
   });
+
+  it("should report an error for mismatched closing tags", () => {
+    const source = "<div></p>";
+    const result = runParser(source);
+    const error = expectFailure(result);
+
+    expect(error._tag).toBe("ParserError");
+    expect((error as ParserError).message).toContain(
+      "Mismatched closing tag. Expected 'div' but got 'p'"
+    );
+    expect((error as ParserError).line).toBe(1);
+    expect((error as ParserError).col).toBe(6);
+  });
 });

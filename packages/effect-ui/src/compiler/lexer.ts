@@ -174,7 +174,7 @@ const addToken =
         lexeme,
         literal,
         line: state.line,
-        col: state.col - lexeme.length + 1,
+        col: state.col - lexeme.length,
       };
       return { ...state, tokens: [...state.tokens, token] };
     });
