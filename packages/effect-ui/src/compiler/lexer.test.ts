@@ -114,4 +114,40 @@ describe("Lexer", () => {
     ];
     expect(runLexer(source)).toEqual(expected);
   });
+
+  it("should correctly tokenize an attribute with a > in its string value", () => {
+    const source = `<div data-logic="if(x > 5)">Content</div>`;
+    const expected = [
+      { type: TokenType.LessThan, lexeme: "<" },
+      { type: TokenType.Identifier, lexeme: "div" },
+      { type: TokenType.Whitespace, lexeme: " " },
+      { type: TokenType.Identifier, lexeme: "data-logic" },
+      { type: TokenType.Equals, lexeme: "=" },
+      { type: TokenType.String, lexeme: `"if(x > 5)"` },
+      { type: TokenType.GreaterThan, lexeme: ">" },
+      { type: TokenType.Identifier, lexeme: "Content" },
+      { type: TokenType.LessThan, lexeme: "<" },
+      { type: TokenType.Slash, lexeme: "/" },
+      { type: TokenType.Identifier, lexeme: "div" },
+      { type: TokenType.GreaterThan, lexeme: ">" },
+      { type: TokenType.EOF, lexeme: "" },
+    ];
+    expect(runLexer(source)).toEqual(expected);
+  });
+
+  it("should tokenize text content with a > character as a single text token", () => {
+    const source = `<div>Is 5 > 3?</div>`;
+    const expected = [
+      { type: TokenType.LessThan, lexeme: "<" },
+      { type: TokenType.Identifier, lexeme: "div" },
+      { type: TokenType.GreaterThan, lexeme: ">" },
+      { type: TokenType.Identifier, lexeme: "Is 5 > 3?" },
+      { type: TokenType.LessThan, lexeme: "<" },
+      { type: TokenType.Slash, lexeme: "/" },
+      { type: TokenType.Identifier, lexeme: "div" },
+      { type: TokenType.GreaterThan, lexeme: ">" },
+      { type: TokenType.EOF, lexeme: "" },
+    ];
+    expect(runLexer(source)).toEqual(expected);
+  });
 });
