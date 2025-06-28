@@ -102,20 +102,46 @@ const element = (
         yield* _(
           _consume(TokenType.Equals, "Expected '=' after attribute name.")
         );
-        const valueToken = yield* _(
-          _consume(
-            TokenType.String,
-            "Expected string literal for attribute value."
-          )
-        );
+
+        const stateAfterEquals = yield* _(Ref.get(stateRef));
+        let attributeValue: AttributeNode["value"];
+
+        if (peek(stateAfterEquals).type === TokenType.String) {
+          const valueToken = yield* _(
+            _consume(
+              TokenType.String,
+              "Expected string literal for attribute value."
+            )
+          );
+          attributeValue = {
+            type: "StringLiteral",
+            value: valueToken.literal as string,
+          };
+        } else if (peek(stateAfterEquals).type === TokenType.OpenBrace) {
+          yield* _(_consume(TokenType.OpenBrace, "Expected '{'."));
+          const expressionToken = yield* _(
+            _consume(TokenType.Identifier, "Expected expression.")
+          );
+          yield* _(_consume(TokenType.CloseBrace, "Expected '}'."));
+          attributeValue = {
+            type: "Expression",
+            content: expressionToken.lexeme,
+          };
+        } else {
+          return yield* _(
+            Effect.fail(
+              new ParserError(
+                "Expected string literal or expression for attribute value.",
+                peek(stateAfterEquals)
+              )
+            )
+          );
+        }
 
         const attribute: AttributeNode = {
           type: "Attribute",
           name: nameToken.lexeme,
-          value: {
-            type: "StringLiteral",
-            value: valueToken.literal as string,
-          },
+          value: attributeValue,
         };
 
         const newAttrs = [...attrs, attribute];
