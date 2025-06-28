@@ -108,10 +108,24 @@ const scanToken = (
       }
 
       case '"':
+        return yield* _(string(stateRef, char));
+
       case "'":
         return yield* _(string(stateRef, char));
 
       default: {
+        // HACK: This is a simple way to detect if we are inside an element's
+        // content. If the previously processed character was a '>', we assume
+        // we are now parsing raw text content until we hit a new tag '<' or
+        // an expression '{'.
+        const stateBefore = yield* _(Ref.get(stateRef));
+        if (
+          stateBefore.current > 0 &&
+          stateBefore.source[stateBefore.current - 2] === ">"
+        ) {
+          return yield* _(text(stateRef));
+        }
+
         if (isAlpha(char)) {
           return yield* _(identifier(stateRef));
         }
@@ -210,6 +224,28 @@ const string = (
     yield* _(addToken(stateRef)(TokenType.String, value));
   });
 
+/**
+ * Scans a block of text content inside an element.
+ * It consumes characters until it encounters a '<' (start of a new tag)
+ * or a '{' (start of an expression). This allows us to capture text nodes
+ * that contain spaces, which would otherwise be treated as separate whitespace tokens.
+ * The captured text is stored in the token's `literal` field.
+ */
+const text = (stateRef: Ref.Ref<LexerState>): Effect.Effect<void, LexerError> =>
+  Effect.gen(function* (_) {
+    yield* _(
+      advanceWhile(
+        stateRef,
+        (state) => peek(state) !== "<" && peek(state) !== "{" && !isAtEnd(state)
+      )
+    );
+    const state = yield* _(Ref.get(stateRef));
+    const content = state.source.substring(state.start, state.current);
+    if (content.trim().length > 0) {
+      yield* _(addToken(stateRef)(TokenType.Identifier, content));
+    }
+  });
+
 const identifier = (
   stateRef: Ref.Ref<LexerState>
 ): Effect.Effect<void, LexerError> =>
@@ -233,7 +269,7 @@ const isAlpha = (char: string): boolean => {
 };
 
 const isAlphaNumeric = (char: string): boolean => {
-  return isAlpha(char) || (char >= "0" && char <= "9");
+  return isAlpha(char) || (char >= "0" && char <= "9") || char === "-";
 };
 
 const isWhitespace = (char: string): boolean => {

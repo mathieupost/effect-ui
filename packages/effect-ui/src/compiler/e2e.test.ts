@@ -35,15 +35,11 @@ describe("Compiler E2E", () => {
 
   it("should compile a complex element with attributes and children", () => {
     const template = `<div class="container" id={id}>Hello {name}</div>`;
-    const expectedJs = `h('div', { 'class': 'container', 'id': id }, ['Hello', h('span', {  }, [name])])`;
+    const expectedJs = `h('div', { 'class': 'container', 'id': id }, ['Hello ', name])`;
 
     const result = compile(template);
     const transpiled = expectSuccess(result);
-    // Note: The transpiler doesn't yet produce this complex output.
-    // This is an aspirational test. We will fix the transpiler next.
-    // For now, let's just log the output.
-    console.log("Complex template output:", transpiled);
-    // expect(transpiled).toBe(expectedJs);
+    expect(transpiled).toBe(expectedJs);
   });
 
   it("should compile a self-closing tag", () => {

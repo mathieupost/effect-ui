@@ -92,12 +92,17 @@ const text = (
     const token = yield* _(
       consume(stateRef, TokenType.Identifier, "Expected text content.")
     );
+    // When the lexer identifies a text block, it stores the raw content
+    // (including spaces) in the token's `literal` field. We prioritize
+    // this literal value to correctly create the TextNode, falling back to
+    // the lexeme for other cases.
+    const content = (token.literal as string) ?? token.lexeme;
     return {
       type: "Text",
-      content: token.lexeme,
+      content: content,
       location: {
         start: { line: token.line, column: token.col },
-        end: { line: token.line, column: token.col + token.lexeme.length },
+        end: { line: token.line, column: token.col + content.length },
       },
     };
   });
